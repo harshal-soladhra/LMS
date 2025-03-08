@@ -95,7 +95,7 @@ router.post("/refresh", (req, res) => {
 // Get User Profile (Protected)
 router.get("/profile", authenticateUser, async (req, res) => {
     try {
-        const [users] = await pool.query("SELECT id, name, email, role FROM users WHERE id = ?", [req.user.id]);
+        const [users] = await pool.query("SELECT id, name, email, profile_picture , role FROM users WHERE id = ?", [req.user.id]);
         if (users.length === 0) return res.status(404).json({ error: "User not found" });
 
         res.json(users[0]);
