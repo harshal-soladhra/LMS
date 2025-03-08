@@ -9,7 +9,7 @@ const SignUp = () => {
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-teal-500 to-blue-600">
+        <div className="flex min-h-screen items-center justify-center ">
             <div className="w-full max-w-md p-8 bg-white rounded-2xl shadow-lg">
                 <h2 className="text-2xl font-semibold text-center text-gray-800">Sign Up</h2>
                 <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
