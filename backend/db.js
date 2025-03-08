@@ -1,9 +1,8 @@
 const mysql = require("mysql2");
-const mongoose = require("mongoose");
 require("dotenv").config();
 
-// MySQL Connection
-const mysqlPool = mysql.createPool({
+// Create MySQL connection pool
+const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
@@ -13,16 +12,5 @@ const mysqlPool = mysql.createPool({
   queueLimit: 0,
 });
 
-// MongoDB Connection
-const connectMongoDB = async () => {
-  try {
-    await mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
-    console.log("Connected to MongoDB Atlas");
-  } catch (error) {
-    console.error("MongoDB connection failed:", error);
-  }
-};
-
-connectMongoDB();
-
-module.exports = { mysqlPool, mongoose };
+// Export pool as promise-based connection
+module.exports = pool.promise();

@@ -1,54 +1,24 @@
 const express = require("express");
+const pool = require("../db");
+const authenticateUser = require("../middleware/authMiddleware");
+
 const router = express.Router();
-const pool = require("../db"); // MySQL Connection Pool
 
-// GET Books with Pagination, Search, and Filters
-router.get("/", async (req, res) => {
+// ✅ Get books issued to the logged-in user
+router.get("/issued", authenticateUser, async (req, res) => {
     try {
-        let { search, category, language, page, limit } = req.query;
+        console.log("🔍 Fetching books for user ID:", req.user.id);
 
-        // Default pagination values
-        page = parseInt(page) || 1;
-        limit = parseInt(limit) || 6;
-        const offset = (page - 1) * limit;
+        const [books] = await pool.query(
+            "SELECT id, title, issued_date, due_date, returned_date FROM books WHERE issued_to = ?",
+            [req.user.id]
+        );
 
-        // Base SQL query
-        let query = "SELECT * FROM books WHERE 1=1";
-        let queryParams = [];
-
-        // Search by Title
-        if (search) {
-            query += " AND title LIKE ?";
-            queryParams.push(`%${search}%`);
-        }
-
-        // Filter by Category (supports multiple selections)
-        if (category) {
-            const categories = category.split(",");
-            const categoryPlaceholders = categories.map(() => "?").join(",");
-            query += ` AND category IN (${categoryPlaceholders})`;
-            queryParams.push(...categories);
-        }
-
-        // Filter by Language (supports multiple selections)
-        if (language) {
-            const languages = language.split(",");
-            const languagePlaceholders = languages.map(() => "?").join(",");
-            query += ` AND language IN (${languagePlaceholders})`;
-            queryParams.push(...languages);
-        }
-
-        // Add Sorting and Pagination
-        query += " ORDER BY book_id ASC LIMIT ? OFFSET ?";
-        queryParams.push(limit, offset);
-
-        // Execute Query
-        const [books] = await pool.execute(query, queryParams);
-        res.json({ books, page, limit });
-
+        console.log("📚 Books found:", books);
+        res.json(books);
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Internal Server Error" });
+        console.error("🔥 Fetch Books Error:", err);
+        res.status(500).json({ error: "Failed to fetch books. Please try again." });
     }
 });
 

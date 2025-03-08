@@ -8,9 +8,11 @@ const AppRoutes = () => {
     return (
         <Routes>
             <Route path="/" element={<SignIn />} />
+            <Route path="/signin" element={<SignIn />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/main" element={<Main />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="*" element={<h1>404 - Page Not Found</h1>} />
         </Routes>
     );
 };
