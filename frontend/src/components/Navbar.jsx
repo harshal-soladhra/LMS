@@ -21,7 +21,7 @@ const Navbar = () => {
   const handleLogout = () => {
     localStorage.removeItem("token"); // Remove token
     setIsOpen(false); // Close mobile menu
-    navigate("/signin", { replace: true }); // Redirect to Sign In
+    navigate("/", { replace: true }); // Redirect to Sign In
   };
 
   return (
@@ -53,7 +53,7 @@ const Navbar = () => {
           <li>
             <button
               onClick={handleLogout}
-              className="relative text-white after:content-[''] after:absolute after:left-0 after:bottom-[-2px] after:w-0 after:h-[2px] after:bg-white after:transition-all after:duration-300 hover:after:w-full"
+              className="cursor-pointer relative text-white after:content-[''] after:absolute after:left-0 after:bottom-[-2px] after:w-0 after:h-[2px] after:bg-white after:transition-all after:duration-300 hover:after:w-full"
             >
               Logout
             </button>

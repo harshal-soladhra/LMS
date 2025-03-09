@@ -4,10 +4,12 @@ import SignUp from "../pages/SignUp";
 import Main from "../pages/Main";
 import Profile from "../pages/Profile";
 import Books from "../pages/Books";
+import ProtectedRoute from "../components/ProtectedRoute";
 
 const AppRoutes = () => {
     return (
         <Routes>
+            <Route element={<ProtectedRoute />}></Route>
             <Route path="/" element={<Main />} />
             <Route path="/signin" element={<SignIn />} />
             <Route path="/signup" element={<SignUp />} />
