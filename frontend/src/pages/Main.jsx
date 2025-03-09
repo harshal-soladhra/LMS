@@ -6,6 +6,7 @@ import "../style/Style.css";
 import { FaSearch } from "react-icons/fa";
 import { motion } from "framer-motion";
 
+
 const Main = () => {
   const [showModal, setShowModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -25,7 +26,7 @@ const Main = () => {
         >
           <h1 className="text-5xl font-bold drop-shadow-lg">Welcome to Our Library</h1>
           <p className="mt-2 text-lg">Discover, Borrow, and Enjoy Books Anytime!</p>
-          <div className="mt-6 flex items-center bg-white text-gray-700 px-4 py-2 rounded-lg shadow-md w-80">
+          <div className="mt-6 flex items-center bg-white text-gray-700 px-4 py-2 rounded-lg shadow-md w-80 mx-auto">
             <FaSearch className="mr-2 text-gray-500" />
             <input
               type="text"
@@ -177,6 +178,8 @@ const Main = () => {
       {/* Book Request Modal */}
       {showModal && <BookRequestModal setShowModal={setShowModal} />}
 
+      {/*best sellers*/ }
+
       {/* Request Book Section */}
       <div className="text-center mt-10">
         <motion.button
@@ -262,7 +265,7 @@ const Main = () => {
       </div>
 
       {/* Footer Section */}
-      
+
     
       
 
