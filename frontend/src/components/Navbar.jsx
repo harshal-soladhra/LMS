@@ -1,10 +1,15 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { FiMenu, FiX } from "react-icons/fi"; // Icons for mobile menu
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
-
+  const navigate = useNavigate();
+  const handleLogout = () => {
+    localStorage.removeItem("token"); // ✅ Remove token
+    navigate("/signin", { replace: true }); // ✅ Redirect to Sign In
+  };
   return (
     <nav className="bg-blue-600 text-white">
       <div className="container mx-auto px-6 py-4 flex justify-between items-center">
@@ -55,12 +60,12 @@ const Navbar = () => {
             </Link>
           </li>
           <li>
-            <Link
-              to="/"
-              className="text-white relative after:content-[''] after:absolute after:left-0 after:bottom-[-2px] after:w-0 after:h-[2px] after:bg-white after:transition-all after:duration-300 after:origin-left hover:after:w-full"
+            <button
+              onClick={handleLogout}
+              className="text-white cursor-pointer relative after:content-[''] after:absolute after:left-0 after:bottom-[-2px] after:w-0 after:h-[2px] after:bg-white after:transition-all after:duration-300 after:origin-left hover:after:w-full"
             >
               Logout
-            </Link>
+            </button >
           </li>
         </ul>
 
