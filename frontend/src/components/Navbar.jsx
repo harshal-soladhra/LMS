@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FiMenu, FiX } from "react-icons/fi";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
@@ -8,6 +8,7 @@ const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
   const [showCalendar, setShowCalendar] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -15,6 +16,13 @@ const Navbar = () => {
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // ✅ Logout Function
+  const handleLogout = () => {
+    localStorage.removeItem("token"); // Remove token
+    setIsOpen(false); // Close mobile menu
+    navigate("/signin", { replace: true }); // Redirect to Sign In
+  };
 
   return (
     <nav className="fixed top-0 left-0 w-full shadow-lg transition-all bg-gradient-to-r from-purple-600 to-indigo-800 text-white z-50">
@@ -32,7 +40,6 @@ const Navbar = () => {
             { path: "/my-books", label: "Notification" },
             { path: "/admin", label: "Admin Panel" },
             { path: "/profile", label: "Profile" },
-            { path: "/", label: "Logout" },
           ].map((item) => (
             <li key={item.path}>
               <Link
@@ -43,6 +50,14 @@ const Navbar = () => {
               </Link>
             </li>
           ))}
+          <li>
+            <button
+              onClick={handleLogout}
+              className="relative text-white after:content-[''] after:absolute after:left-0 after:bottom-[-2px] after:w-0 after:h-[2px] after:bg-white after:transition-all after:duration-300 hover:after:w-full"
+            >
+              Logout
+            </button>
+          </li>
         </ul>
 
         {/* Current Time and Calendar Button */}
@@ -71,30 +86,37 @@ const Navbar = () => {
       </div>
 
       {/* Mobile Menu Dropdown */}
-      <div
-        className={`md:hidden absolute top-16 left-0 w-full bg-purple-700 shadow-md transition-transform transform ${isOpen ? "translate-y-0" : "-translate-y-full"}`}
-      >
-        <ul className="text-center space-y-4 py-4">
-          {[
-            { path: "/", label: "Home" },
-            { path: "/books", label: "Books" },
-            { path: "/my-books", label: "Notification" },
-            { path: "/admin", label: "Admin Panel" },
-            { path: "/profile", label: "Profile" },
-            { path: "/", label: "Logout" },
-          ].map((item) => (
-            <li key={item.path}>
-              <Link
-                to={item.path}
+      {isOpen && (
+        <div className="md:hidden absolute top-16 left-0 w-full bg-purple-700 shadow-md transition-transform transform">
+          <ul className="text-center space-y-4 py-4">
+            {[
+              { path: "/", label: "Home" },
+              { path: "/books", label: "Books" },
+              { path: "/my-books", label: "Notification" },
+              { path: "/admin", label: "Admin Panel" },
+              { path: "/profile", label: "Profile" },
+            ].map((item) => (
+              <li key={item.path}>
+                <Link
+                  to={item.path}
+                  className="block py-2 text-white"
+                  onClick={() => setIsOpen(false)}
+                >
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+            <li>
+              <button
                 className="block py-2 text-white"
-                onClick={() => setIsOpen(false)}
+                onClick={handleLogout}
               >
-                {item.label}
-              </Link>
+                Logout
+              </button>
             </li>
-          ))}
-        </ul>
-      </div>
+          </ul>
+        </div>
+      )}
     </nav>
   );
 };
