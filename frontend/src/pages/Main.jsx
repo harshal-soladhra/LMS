@@ -177,42 +177,94 @@ const Main = () => {
       {/* Book Request Modal */}
       {showModal && <BookRequestModal setShowModal={setShowModal} />}
 
-     {/* Request Book Section */}
+      {/* Request Book Section */}
       <div className="text-center mt-10">
         <motion.button
           onClick={() => setShowModal(true)}
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg transition"
-          whileHover={{
-            scale: 1.1,
-            boxShadow: "0px 0px 20px rgba(59, 130, 246, 0.9)", // Smooth glowing effect
-          }}
-          whileTap={{ scale: 0.95 }}
-          transition={{ type: "spring", stiffness: 120, damping: 10 }} // Smooth transition
+          className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition transform hover:scale-105"
+          whileTap={{ scale: 0.9 }}
         >
           Request a Book
         </motion.button>
       </div>
 
+      {/* About Section */}
+      <div className="about-section">
+        <div className="about-container">
+          
+          {/* Text Section */}
+          <div className="text-section">
+            <h2>About Our Library</h2>
+            <p>
+              Our library is a place of knowledge and discovery, offering a variety of resources 
+              for students, researchers, and book lovers.
+            </p>
+
+            <h4>📚 Extensive Book Collection</h4>
+            <p>We house thousands of books across different genres, academic fields, and interests.</p>
+
+            <h4>💻 Digital Resources</h4>
+            <p>Access e-books, research papers, and digital archives with our online library services.</p>
+
+            <h4>☕ Peaceful Reading Spaces</h4>
+            <p>Enjoy quiet and comfortable spaces for reading, studying, or working on assignments.</p>
+
+            <h4>🎓 Student & Research Assistance</h4>
+            <p>Our librarians provide guidance in research, citations, and resource recommendations.</p>
+
+            <h4>📶 Free Wi-Fi & Computer Access</h4>
+            <p>Stay connected with high-speed internet and dedicated workstations for students.</p>
+          </div>
+
+          {/* Image Section */}
+          <div className="img-section">
+            <img src="src/assets/1-library-img.webp" alt="Library" />
+          </div>
+        
+        </div>
+      </div>
 
 
 
       {/* Testimonials Section */}
-      <section className="max-w-6xl mx-auto px-4 py-10 text-center">
-        <h2 className="text-3xl font-bold text-blue-700 mb-6">What Our Readers Say</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {["Amazing Library!", "Best Collection", "User-friendly Service"].map((feedback, index) => (
-            <motion.div
-              key={index}
-              className="bg-white shadow-lg p-6 rounded-lg"
-              whileHover={{ scale: 1.05 }}
-            >
-              <p className="text-gray-600">“{feedback}”</p>
-              <h4 className="text-blue-600 mt-2">- Happy Reader</h4>
-            </motion.div>
-          ))}
-        </div>
-      </section>
+      <div className="reviews-section">
+        <section className="reviews-grid">
+          <div className="review-card">
+            <div className="person-img">
+              <img src="src/assets/reiview-person/1-img.webp" alt="person1" />
+            </div>
+            <div className="review-text">
+              <h3>John Doe</h3>
+              <p>"The library has a great collection of books. I love the service!"</p>
+            </div>
+          </div>
 
+          <div className="review-card">
+            <div className="person-img">
+              <img src="src/assets/reiview-person/2-img.webp" alt="person2" />
+            </div>
+            <div className="review-text">
+              <h3>Eva Lichi</h3>
+              <p>"Amazing atmosphere and very helpful staff. Highly recommended!"</p>
+            </div>
+          </div>
+
+          <div className="review-card">
+            <div className="person-img">
+              <img src="src/assets/reiview-person/3-img.webp" alt="person3" />
+            </div>
+            <div className="review-text">
+              <h3>Robert Brown</h3>
+              <p>"A quiet and perfect place to study. Best library in town!"</p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {/* Footer Section */}
+      
+    
+      
 
     </div>
 

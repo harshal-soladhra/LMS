@@ -120,7 +120,7 @@ function Profile() {
   if (error) return <p className="text-red-500">{error}</p>;
 
   return (
-    <div className="min-h-screen w-full bg-gray-100 p-4 flex justify-center items-center">
+    <div className="min-h-screen w-full bg-gray-100 p-4 flex justify-center items-center my-20">
       <div className="bg-white p-6 rounded-2xl shadow-lg w-full max-w-4xl">
         {/* Profile Header */}
         <div className="flex items-center gap-6">
