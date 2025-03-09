@@ -7,7 +7,7 @@ import Profile from "../pages/Profile";
 const AppRoutes = () => {
     return (
         <Routes>
-            <Route path="/" element={<SignIn />} />
+            <Route path="/" element={<Main />} />
             <Route path="/signin" element={<SignIn />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/main" element={<Main />} />
