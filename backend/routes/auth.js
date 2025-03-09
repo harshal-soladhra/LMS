@@ -1,12 +1,12 @@
 const express = require("express");
 const authenticateUser = require("../middleware/authMiddleware");
-// const bcrypt = require("bcryptjs");
 const bcrypt = require("bcrypt"); // ✅ Use bcrypt instead of bcryptjs
 const jwt = require("jsonwebtoken");
 const pool = require("../db");
 require("dotenv").config();
 
 const router = express.Router();
+let blacklistedTokens = [];
 
 // User Registration
 router.post("/register", async (req, res) => {
@@ -52,7 +52,7 @@ router.post("/register", async (req, res) => {
     }
 });
 
-
+// User Login
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -91,7 +91,6 @@ router.post("/refresh", (req, res) => {
         res.status(403).json({ error: "Invalid refresh token" });
     }
 });
-let blacklistedTokens = [];
 
 router.post("/logout", (req, res) => {
     const token = req.headers.authorization?.split(" ")[1];
