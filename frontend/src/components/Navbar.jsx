@@ -87,7 +87,7 @@ const Navbar = () => {
 
       {/* Mobile Menu Dropdown */}
       {isOpen && (
-        <div className="md:hidden absolute top-16 left-0 w-full bg-purple-700 shadow-md transition-transform transform">
+        <div className="md:hidden absolute top-16 left-0 w-full bg-blue-700 ">
           <ul className="text-center space-y-4 py-4">
             {[
               { path: "/", label: "Home" },
