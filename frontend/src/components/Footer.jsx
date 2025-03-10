@@ -19,19 +19,19 @@ export const Footer = () => {
         <div className="footer-section links">
           <h3>🔗 Quick Links</h3>
           <ul>
-            <li><a href="#home">Home</a></li>
-            <li><a href="#catalog">Profile</a></li>
-            <li><a href="#services">Services</a></li>
-            <li><a href="#contact">Contact</a></li>
+            <li><a href="/Main">Home</a></li>
+            <li><a href="/Profile">Profile</a></li>
+            <li><a href="/Books">Books</a></li>
+            <li><a href="#contact">Enquiry</a></li>
           </ul>
         </div>
 
         {/* Contact Information */}
         <div className="footer-section contact">
           <h3>📞 Contact Us</h3>
-          <p>Main Library, IITRAM University</p>
+          <p>Main Library, IITRAM colllege , Ahmedabad</p>
           <p>Phone: (123) 456-7890</p>
-          <p>Email: iitramlibrary@gmail</p>
+          <p>Email: iitramlibrary@gmail.com</p>
         </div>
 
         {/* Newsletter Subscription */}

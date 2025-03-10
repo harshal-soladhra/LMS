@@ -25,7 +25,8 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 w-full shadow-lg transition-all bg-gradient-to-r from-purple-600 to-indigo-800 text-white z-50">
+    <nav className="fixed top-0 left-0 w-full shadow-lg transition-all bg-gradient-to-r from-[#1a1a2e] to-[#16213e] text-white z-50">
+
       <div className="container mx-auto px-6 py-4 flex justify-between items-center">
         {/* Brand Logo */}
         <Link to="/" className="text-2xl font-bold">
