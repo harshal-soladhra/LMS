@@ -7,61 +7,74 @@ function Profile() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [userPhoto, setUserPhoto] = useState(localStorage.getItem("userPhoto") || "https://via.placeholder.com/150");
+  const [userPhoto, setUserPhoto] = useState(""); // ✅ Store profile picture
   const [books, setBooks] = useState([]); // ✅ Store real books
   const [activePage, setActivePage] = useState("issuedBooks");
   const [currentPage, setCurrentPage] = useState(1);
-  const handlePhotoChange = (e) => {
+  // 📂 Handle Profile Picture Upload
+  const handlePhotoChange = async (e) => {
     const file = e.target.files[0];
 
     if (file) {
-        const reader = new FileReader();
+      const formData = new FormData();
+      formData.append("photo", file);
 
-        reader.onload = (e) => {
-            const photoUrl = e.target.result;
-            setUserPhoto(photoUrl);
-            localStorage.setItem("userPhoto", photoUrl); // ✅ Save to local storage
-        };
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.post("http://localhost:5000/api/upload/profile-picture", formData, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        });
 
-        reader.readAsDataURL(file);
+        setUserPhoto(`http://localhost:5000${response.data.imageUrl}`); // ✅ Update profile picture
+      } catch (err) {
+        console.error("Upload Error:", err);
+      }
     }
-};
-
-
+  };
   useEffect(() => {
     const fetchProfileAndBooks = async () => {
-        const token = localStorage.getItem("token");
-        if (!token) {
-            console.error("❌ No token found! Redirecting to Sign In...");
-            navigate("/signin", { replace: true });
-            return;
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.error("❌ No token found! Redirecting to Sign In...");
+        navigate("/signin", { replace: true });
+        return;
+      }
+
+      try {
+        // ✅ Fetch User Profile
+        const userResponse = await axios.get("http://localhost:5000/api/auth/profile", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log(userResponse)
+        setUser(userResponse.data);
+        console.log(userResponse.data.profile_picture)
+        if (userResponse.data.profile_picture) {
+          setUserPhoto(userResponse.data.profile_picture); // ✅ Use full URL from DB
+        } else {
+          setUserPhoto("http://localhost:5000/uploads/default.png"); // ✅ Fallback Image
         }
 
-        try {
-            // ✅ Fetch User Profile
-            const userResponse = await axios.get("http://localhost:5000/api/auth/profile", {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            setUser(userResponse.data);
+        // ✅ Fetch Books Issued to User
+        const booksResponse = await axios.get("http://localhost:5000/api/books/issued", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-            // ✅ Fetch Books Issued to User
-            const booksResponse = await axios.get("http://localhost:5000/api/books/issued", {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            setBooks(booksResponse.data);
-        } catch (err) {
-            console.error("Profile/Books Fetch Error:", err);
-            localStorage.removeItem("token");
-            navigate("/signin", { replace: true });
-        } finally {
-            setLoading(false);
-        }
+        setBooks(booksResponse.data);
+      } catch (err) {
+        console.error("Profile/Books Fetch Error:", err);
+        localStorage.removeItem("token");
+        navigate("/signin", { replace: true });
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchProfileAndBooks();
-}, [navigate]);
-
-
+  }, [navigate]);  // ✅ Single useEffect dependency
+  console.log(userPhoto)
   const booksPerPage = 5;
   const getCurrentBooks = () => {
     let filteredBooks = books;
@@ -77,8 +90,8 @@ function Profile() {
     (activePage === "returnedBooks"
       ? books.filter((book) => book.returned_date).length
       : activePage === "dueDate"
-      ? books.filter((book) => !book.returned_date).length
-      : books.length) / booksPerPage
+        ? books.filter((book) => !book.returned_date).length
+        : books.length) / booksPerPage
   );
 
   const handlePageChange = (page) => setCurrentPage(page);
@@ -107,13 +120,25 @@ function Profile() {
   if (error) return <p className="text-red-500">{error}</p>;
 
   return (
-    <div className="min-h-screen w-full bg-gray-100 p-4 flex justify-center items-center">
+    <div className="min-h-screen w-full bg-gray-100 p-4 flex justify-center items-center my-20">
       <div className="bg-white p-6 rounded-2xl shadow-lg w-full max-w-4xl">
         {/* Profile Header */}
         <div className="flex items-center gap-6">
           <div className="relative w-32 h-32">
-            <img src={userPhoto} alt="User Photo" className="w-full h-full object-cover rounded-full" />
-            <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" id="photoInput" />
+            <img
+              src={userPhoto || "https://via.placeholder.com/150"}
+              alt="User Photo"
+              className="w-full h-full object-cover rounded-full"
+            />
+            {/* Hidden File Input */}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoChange}
+              className="hidden"
+              id="photoInput"
+            />
+            {/* Label to Trigger File Input */}
             <label htmlFor="photoInput" className="absolute bottom-2 right-2 bg-blue-500 text-white p-1 rounded-full text-sm cursor-pointer">
               📷
             </label>
@@ -130,9 +155,8 @@ function Profile() {
               setActivePage("issuedBooks");
               setCurrentPage(1);
             }}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all duration-300 ${
-              activePage === "issuedBooks" ? "bg-blue-600 text-white shadow-lg scale-105" : "bg-gray-100 text-gray-700 hover:bg-blue-500 hover:text-white hover:scale-105"
-            }`}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all duration-300 ${activePage === "issuedBooks" ? "bg-blue-600 text-white shadow-lg scale-105" : "bg-gray-100 text-gray-700 hover:bg-blue-500 hover:text-white hover:scale-105"
+              }`}
           >
             📚 Issued Books
           </button>
@@ -141,9 +165,8 @@ function Profile() {
               setActivePage("returnedBooks");
               setCurrentPage(1);
             }}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all duration-300 ${
-              activePage === "returnedBooks" ? "bg-blue-600 text-white shadow-lg scale-105" : "bg-gray-100 text-gray-700 hover:bg-blue-500 hover:text-white hover:scale-105"
-            }`}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all duration-300 ${activePage === "returnedBooks" ? "bg-blue-600 text-white shadow-lg scale-105" : "bg-gray-100 text-gray-700 hover:bg-blue-500 hover:text-white hover:scale-105"
+              }`}
           >
             📅 Returned Books
           </button>
@@ -152,9 +175,8 @@ function Profile() {
               setActivePage("dueDate");
               setCurrentPage(1);
             }}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all duration-300 ${
-              activePage === "dueDate" ? "bg-blue-600 text-white shadow-lg scale-105" : "bg-gray-100 text-gray-700 hover:bg-blue-500 hover:text-white hover:scale-105"
-            }`}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all duration-300 ${activePage === "dueDate" ? "bg-blue-600 text-white shadow-lg scale-105" : "bg-gray-100 text-gray-700 hover:bg-blue-500 hover:text-white hover:scale-105"
+              }`}
           >
             ⚠️ Due Date
           </button>
@@ -165,7 +187,20 @@ function Profile() {
           {getCurrentBooks().map((book) => (
             <div key={book.id} className="p-4 mb-4 border rounded-lg shadow-sm bg-white flex justify-between">
               <p><strong>Title:</strong> {book.title}</p>
-              <p><strong>Issued Date:</strong> {book.issued_date} | <strong>Due Date:</strong> {book.due_date}</p>
+              <p>
+                <strong>Issued Date:</strong> {new Date(book.issued_date).toLocaleString("en-IN", {
+                  year: "numeric", month: "long", day: "numeric",
+                  hour: "2-digit", minute: "2-digit", second: "2-digit",
+                  hour12: true
+                })
+                } |
+                <strong> Due Date:</strong> {new Date(book.issued_date).toLocaleString("en-IN", {
+                  year: "numeric", month: "long", day: "numeric",
+                  hour: "2-digit", minute: "2-digit", second: "2-digit",
+                  hour12: true
+                })
+                }
+              </p>
             </div>
           ))}
         </div>
@@ -173,5 +208,4 @@ function Profile() {
     </div>
   );
 }
-
 export default Profile;

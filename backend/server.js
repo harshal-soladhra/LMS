@@ -7,6 +7,7 @@ require("dotenv").config();
 // Import Routes
 const authRoutes = require("./routes/auth");
 const bookRoutes = require("./routes/books"); // ✅ Import books route
+const uploadRoutes = require("./routes/upload"); // ✅ Import upload route
 
 // Database Connections
 const { mysqlPool } = require("./db"); // MySQL
@@ -21,9 +22,13 @@ app.use(bodyParser.json());
 app.use(cookieParser());
 app.use(express.json()); // ✅ JSON Middleware
 
+// ✅ Serve static files from "uploads" folder
+app.use("/uploads", express.static("uploads"));
+
 // Routes
 app.use("/api/auth", authRoutes); // ✅ MySQL Authentication
 app.use("/api/books", bookRoutes); // ✅ Books route (Ensure it's active)
+app.use("/api/upload", uploadRoutes); // ✅ Register upload route
 
 // Test Route
 app.get("/", (req, res) => {

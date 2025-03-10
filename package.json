@@ -1,6 +1,14 @@
 {
   "dependencies": {
+<<<<<<< HEAD
     "bcrypt": "^5.1.1",
     "cookie-parser": "^1.4.7"
+=======
+    "axios": "^1.8.2",
+    "bcrypt": "^5.1.1",
+    "cookie-parser": "^1.4.7",
+    "framer-motion": "^12.4.10",
+    "multer": "^1.4.5-lts.1"
+>>>>>>> 14881419a8a9679ab6e71a78ae39c6644e87f4f7
   }
 }

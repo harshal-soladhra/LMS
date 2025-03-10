@@ -3,14 +3,18 @@ import SignIn from "../pages/SignIn";
 import SignUp from "../pages/SignUp";
 import Main from "../pages/Main";
 import Profile from "../pages/Profile";
+import Books from "../pages/Books";
+import ProtectedRoute from "../components/ProtectedRoute";
 
 const AppRoutes = () => {
     return (
         <Routes>
-            <Route path="/" element={<SignIn />} />
+            <Route element={<ProtectedRoute />}></Route>
+            <Route path="/" element={<Main />} />
             <Route path="/signin" element={<SignIn />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/main" element={<Main />} />
+            <Route path="/Books" element={<Books />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="*" element={<h1>404 - Page Not Found</h1>} />
         </Routes>
