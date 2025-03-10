@@ -54,8 +54,4 @@ const NewArrivals = () => {
   );
 };
 
-<<<<<<< HEAD
 export default NewArrivals;
-=======
-export default NewArrivals;
->>>>>>> 14881419a8a9679ab6e71a78ae39c6644e87f4f7
