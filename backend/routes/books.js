@@ -1,25 +1,35 @@
-const express = require("express");
-const pool = require("../db");
-const authenticateUser = require("../middleware/authMiddleware");
+import { supabase } from "../supabaseClient.js";
+import express from "express";
+import authenticateUser from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// ✅ Get books issued to the logged-in user
-router.get("/issued", authenticateUser, async (req, res) => {
+// 📚 Get all books
+router.get("/", async (req, res) => {
     try {
-        console.log("🔍 Fetching books for user ID:", req.user.id);
-
-        const [books] = await pool.query(
-            "SELECT id, title, issued_date, due_date, returned_date FROM books WHERE issued_to = ?",
-            [req.user.id]
-        );
-
-        console.log("📚 Books found:", books);
-        res.json(books);
+        const { data, error } = await supabase.from("books").select("*");
+        if (error) throw error;
+        res.json(data);
     } catch (err) {
         console.error("🔥 Fetch Books Error:", err);
-        res.status(500).json({ error: "Failed to fetch books. Please try again." });
+        res.status(500).json({ error: "Failed to fetch books." });
     }
 });
 
-module.exports = router;
+// 📚 Get books issued to a user
+router.get("/issued", authenticateUser, async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from("books")
+            .select("*")
+            .eq("issued_to", req.user.id);
+        
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        console.error("🔥 Fetch Issued Books Error:", err);
+        res.status(500).json({ error: "Failed to fetch issued books." });
+    }
+});
+
+export default router;

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { supabase } from "../supabaseClient"; // Import Supabase client
+import { motion } from "framer-motion";
 
 const SignIn = () => {
     const navigate = useNavigate();
@@ -15,51 +16,81 @@ const SignIn = () => {
         setError("");
 
         try {
-            const response = await axios.post("http://localhost:5000/api/auth/login", { email, password });
-            localStorage.setItem("token", response.data.token);
-            navigate("/profile"); // Redirect to the main dashboard
+            // 🔐 Supabase Sign In
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+
+            if (error) throw error;
+
+            // Store session token
+            localStorage.setItem("supabase_token", data.session.access_token);
+
+            navigate("/profile"); // Redirect to profile page
         } catch (err) {
-            setError(err.response?.data?.error || "Login failed. Please try again.");
+            setError(err.message || "Login failed. Please try again.");
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center">
-            <div className="w-full max-w-md p-8 bg-white rounded-2xl shadow-lg">
-                <h2 className="text-2xl font-semibold text-center text-gray-800">Sign In</h2>
-                {error && <p className="text-red-500 text-center">{error}</p>}
+        <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            transition={{ duration: 1 }}
+            className="flex min-h-screen items-center justify-center bg-gradient-to-r from-indigo-500 to-purple-600 p-6"
+        >
+            <motion.div 
+                initial={{ y: -50, opacity: 0 }} 
+                animate={{ y: 0, opacity: 1 }} 
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                className="w-full max-w-md p-8 bg-white rounded-2xl shadow-2xl"
+            >
+                <motion.h2 
+                    initial={{ opacity: 0, scale: 0.8 }} 
+                    animate={{ opacity: 1, scale: 1 }} 
+                    transition={{ delay: 0.3 }}
+                    className="text-3xl font-bold text-center text-gray-800"
+                >
+                    Welcome Back!
+                </motion.h2>
+                {error && <motion.p className="text-red-500 text-center" animate={{ scale: 1.1 }}>{error}</motion.p>}
                 <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-                    <input 
+                    <motion.input 
                         type="email"
                         placeholder="Email"
-                        className="w-full p-3 border border-gray-300 rounded-lg"
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
+                        whileFocus={{ scale: 1.02 }}
                     />
-                    <input 
+                    <motion.input 
                         type="password"
                         placeholder="Password"
-                        className="w-full p-3 border border-gray-300 rounded-lg"
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
+                        whileFocus={{ scale: 1.02 }}
                     />
-                    <button
+                    <motion.button
                         type="submit"
-                        className="w-full bg-indigo-600 text-white p-3 rounded-lg hover:bg-indigo-700"
+                        className="w-full bg-indigo-600 text-white p-3 rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-400"
                         disabled={loading}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                     >
                         {loading ? "Logging in..." : "Login"}
-                    </button>
+                    </motion.button>
                 </form>
                 <p className="mt-4 text-center text-gray-600">
-                    Don't have an account? <Link to="/signup" className="text-indigo-500">Sign Up</Link>
+                    Don't have an account? <Link to="/signup" className="text-indigo-500 hover:underline">Sign Up</Link>
                 </p>
-            </div>
-        </div>
+            </motion.div>
+        </motion.div>
     );
 };
 

@@ -5,6 +5,7 @@ import Main from "../pages/Main";
 import Profile from "../pages/Profile";
 import Books from "../pages/Books";
 import ProtectedRoute from "../components/ProtectedRoute";
+import AvailableBooks from "../pages/AvailableBooks";
 
 const AppRoutes = () => {
     return (
@@ -16,6 +17,8 @@ const AppRoutes = () => {
             <Route path="/main" element={<Main />} />
             <Route path="/Books" element={<Books />} />
             <Route path="/profile" element={<Profile />} />
+
+            <Route path="/available-books" element={<AvailableBooks/>} /> 
             <Route path="*" element={<h1>404 - Page Not Found</h1>} />
         </Routes>
     );

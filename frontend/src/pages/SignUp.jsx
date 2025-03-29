@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { supabase } from "../supabaseClient"; // ✅ Import Supabase client
+import { motion } from "framer-motion";
 
 const SignUp = () => {
     const navigate = useNavigate();
@@ -17,6 +18,12 @@ const SignUp = () => {
         setLoading(true);
         setError("");
 
+        if (password.length < 6) {
+            setError("Password must be at least 6 characters long.");
+            setLoading(false);
+            return;
+        }
+
         if (password !== confirmPassword) {
             setError("Passwords do not match!");
             setLoading(false);
@@ -24,61 +31,110 @@ const SignUp = () => {
         }
 
         try {
-            const response = await axios.post("http://localhost:5000/api/auth/register", {
-                name, email, password, role
+            // ✅ Sign up user in Supabase Auth
+            const { data, error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: { name, role } // ✅ Store name & role in metadata
+                }
             });
 
-            localStorage.setItem("token", response.data.token);
-            navigate("/main"); // Redirect after successful signup
+            if (error) throw error;
+
+            // ✅ Insert user details into Supabase database
+            const { error: dbError } = await supabase.from("users").insert([
+                { id: data.user.id, name, email, role }
+            ]);
+
+            if (dbError) throw dbError;
+
+            // ✅ Redirect to sign-in page after successful registration
+            navigate("/signin");
         } catch (err) {
-            setError(err.response?.data?.error || "Registration failed. Please try again.");
+            setError(err.message || "Registration failed. Please try again.");
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center">
-            <div className="w-full max-w-md p-8 bg-white rounded-2xl shadow-lg">
-                <h2 className="text-2xl font-semibold text-center text-gray-800">Sign Up</h2>
-                {error && <p className="text-red-500 text-center">{error}</p>}
-                <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-                    <input 
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1 }}
+            className=" flex min-h-screen items-center justify-center bg-gradient-to-r from-blue-400 to-purple-500 py-24"
+        >
+            <motion.div
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 0.5 }}
+                className="w-full max-w-md p-8 bg-white rounded-2xl shadow-lg"
+            >
+                <motion.h2
+                    initial={{ y: -20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-2xl font-semibold text-center text-gray-800"
+                >
+                    Sign Up
+                </motion.h2>
+                {error && <motion.p className="text-red-500 text-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>{error}</motion.p>}
+                <motion.form
+                    className="mt-6 space-y-4"
+                    onSubmit={handleSubmit}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                >
+                    <motion.input
                         type="text" placeholder="Full Name" className="w-full p-3 border border-gray-300 rounded-lg"
                         value={name} onChange={(e) => setName(e.target.value)} required
+                        whileFocus={{ scale: 1.05 }}
                     />
-                    <input 
+                    <motion.input
                         type="email" placeholder="Email" className="w-full p-3 border border-gray-300 rounded-lg"
                         value={email} onChange={(e) => setEmail(e.target.value)} required
+                        whileFocus={{ scale: 1.05 }}
                     />
-                    <input 
+                    <motion.input
                         type="password" placeholder="Password" className="w-full p-3 border border-gray-300 rounded-lg"
                         value={password} onChange={(e) => setPassword(e.target.value)} required
+                        whileFocus={{ scale: 1.05 }}
                     />
-                    <input 
+                    <motion.input
                         type="password" placeholder="Confirm Password" className="w-full p-3 border border-gray-300 rounded-lg"
                         value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required
+                        whileFocus={{ scale: 1.05 }}
                     />
-                    <select 
-                        className="w-full p-3 border border-gray-300 rounded-lg" 
+                    <motion.select
+                        className="w-full p-3 border border-gray-300 rounded-lg"
                         value={role} onChange={(e) => setRole(e.target.value)}
+                        whileFocus={{ scale: 1.05 }}
                     >
                         <option value="member">Member</option>
                         <option value="librarian">Librarian</option>
                         <option value="admin">Admin</option>
-                    </select>
-                    <button 
+                    </motion.select>
+                    <motion.button
                         type="submit" className="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700"
                         disabled={loading}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                     >
                         {loading ? "Registering..." : "Register"}
-                    </button>
-                </form>
-                <p className="mt-4 text-center text-gray-600">
-                    Already have an account? <Link to="/" className="text-blue-500">Sign In</Link>
-                </p>
-            </div>
-        </div>
+                    </motion.button>
+                </motion.form>
+                <motion.p
+                    className="mt-4 text-center text-gray-600"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                >
+                    Already have an account? <Link to="/signin" className="text-blue-500">Sign In</Link>
+                </motion.p>
+            </motion.div>
+        </motion.div>
     );
 };
 

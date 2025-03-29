@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { FiMenu, FiX } from "react-icons/fi";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
+import { supabase } from "../supabaseClient"; // ✅ Import Supabase client
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -17,16 +18,19 @@ const Navbar = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // ✅ Logout Function
-  const handleLogout = () => {
-    localStorage.removeItem("token"); // Remove token
-    setIsOpen(false); // Close mobile menu
-    navigate("/", { replace: true }); // Redirect to Sign In
+  // ✅ Fixed Logout Function
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut(); // ✅ Properly log out from Supabase
+      localStorage.removeItem("token"); // ✅ Clear local storage
+      navigate("/", { replace: true }); // ✅ Redirect to home page
+    } catch (error) {
+      console.error("Logout Error:", error.message);
+    }
   };
 
   return (
     <nav className="fixed top-0 left-0 w-full shadow-lg transition-all bg-gradient-to-r from-[#1a1a2e] to-[#16213e] text-white z-50">
-
       <div className="container mx-auto px-6 py-4 flex justify-between items-center">
         {/* Brand Logo */}
         <Link to="/" className="text-2xl font-bold">
@@ -88,7 +92,7 @@ const Navbar = () => {
 
       {/* Mobile Menu Dropdown */}
       {isOpen && (
-        <div className="md:hidden absolute top-16 left-0 w-full bg-blue-700 ">
+        <div className="md:hidden absolute top-16 left-0 w-full bg-blue-700">
           <ul className="text-center space-y-4 py-4">
             {[
               { path: "/", label: "Home" },

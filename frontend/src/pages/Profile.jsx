@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import { supabase } from "../supabaseClient"; // ✅ Import Supabase client
 
 function Profile() {
   const navigate = useNavigate();
@@ -11,61 +11,65 @@ function Profile() {
   const [books, setBooks] = useState([]); // ✅ Store real books
   const [activePage, setActivePage] = useState("issuedBooks");
   const [currentPage, setCurrentPage] = useState(1);
+
   // 📂 Handle Profile Picture Upload
   const handlePhotoChange = async (e) => {
     const file = e.target.files[0];
+    if (!file || !user) return;
 
-    if (file) {
-      const formData = new FormData();
-      formData.append("photo", file);
+    const filePath = `user_${user.id}/${Date.now()}_${file.name}`;
 
-      try {
-        const token = localStorage.getItem("token");
-        const response = await axios.post("http://localhost:5000/api/upload/profile-picture", formData, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        });
+    const { data, error } = await supabase.storage
+      .from("profile-pictures")
+      .upload(filePath, file, { cacheControl: "3600", upsert: true });
 
-        setUserPhoto(`http://localhost:5000${response.data.imageUrl}`); // ✅ Update profile picture
-      } catch (err) {
-        console.error("Upload Error:", err);
-      }
+    if (error) {
+      console.error("Upload Error:", error.message);
+      return;
     }
+
+    // ✅ Get the public URL
+    const { data: imageUrlData } = supabase.storage.from("profile-pictures").getPublicUrl(filePath);
+    const imageUrl = imageUrlData.publicUrl;
+
+    setUserPhoto(imageUrl);
+
+    // ✅ Update user profile picture in Supabase database
+    await supabase.from("users").update({ profile_picture: imageUrl }).eq("id", user.id);
   };
+
   useEffect(() => {
     const fetchProfileAndBooks = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        console.error("❌ No token found! Redirecting to Sign In...");
-        navigate("/signin", { replace: true });
-        return;
-      }
-
       try {
-        // ✅ Fetch User Profile
-        const userResponse = await axios.get("http://localhost:5000/api/auth/profile", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        console.log(userResponse)
-        setUser(userResponse.data);
-        console.log(userResponse.data.profile_picture)
-        if (userResponse.data.profile_picture) {
-          setUserPhoto(userResponse.data.profile_picture); // ✅ Use full URL from DB
-        } else {
-          setUserPhoto("http://localhost:5000/uploads/default.png"); // ✅ Fallback Image
+        // ✅ Fetch user session from Supabase
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !sessionData.session) {
+          console.error("❌ No active session! Redirecting to Sign In...");
+          navigate("/signin", { replace: true });
+          return;
         }
 
-        // ✅ Fetch Books Issued to User
-        const booksResponse = await axios.get("http://localhost:5000/api/books/issued", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        // ✅ Fetch user details from Supabase database
+        const { data: userData, error: userError } = await supabase
+          .from("users")
+          .select("id, name, email, profile_picture, role")
+          .eq("id", sessionData.session.user.id)
+          .single();
 
-        setBooks(booksResponse.data);
+        if (userError) throw userError;
+        setUser(userData);
+        setUserPhoto(userData.profile_picture || "https://via.placeholder.com/150");
+
+        // ✅ Fetch books issued to user
+        const { data: booksData, error: booksError } = await supabase
+          .from("books")
+          .select("id, title, issued_date, due_date, returned_date")
+          .eq("issued_to", userData.id);
+
+        if (booksError) throw booksError;
+        setBooks(booksData);
       } catch (err) {
         console.error("Profile/Books Fetch Error:", err);
-        localStorage.removeItem("token");
         navigate("/signin", { replace: true });
       } finally {
         setLoading(false);
@@ -73,8 +77,8 @@ function Profile() {
     };
 
     fetchProfileAndBooks();
-  }, [navigate]);  // ✅ Single useEffect dependency
-  console.log(userPhoto)
+  }, [navigate]);
+
   const booksPerPage = 5;
   const getCurrentBooks = () => {
     let filteredBooks = books;
@@ -96,26 +100,6 @@ function Profile() {
 
   const handlePageChange = (page) => setCurrentPage(page);
 
-  const getPagination = () => {
-    const pages = [];
-    if (totalPages <= 5) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      pages.push(1, 2, 3);
-      if (currentPage > 4) pages.push("...");
-      const start = Math.max(4, currentPage - 1);
-      const end = Math.min(totalPages - 1, currentPage + 1);
-      for (let i = start; i <= end; i++) {
-        pages.push(i);
-      }
-      if (currentPage < totalPages - 3) pages.push("...");
-      pages.push(totalPages);
-    }
-    return pages;
-  };
-
   if (loading) return <p>Loading profile...</p>;
   if (error) return <p className="text-red-500">{error}</p>;
 
@@ -130,15 +114,7 @@ function Profile() {
               alt="User Photo"
               className="w-full h-full object-cover rounded-full"
             />
-            {/* Hidden File Input */}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handlePhotoChange}
-              className="hidden"
-              id="photoInput"
-            />
-            {/* Label to Trigger File Input */}
+            <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" id="photoInput" />
             <label htmlFor="photoInput" className="absolute bottom-2 right-2 bg-blue-500 text-white p-1 rounded-full text-sm cursor-pointer">
               📷
             </label>
@@ -147,39 +123,6 @@ function Profile() {
             <h2 className="text-2xl font-semibold">{user?.name}</h2>
             <p className="text-gray-600">{user?.role}</p>
           </div>
-        </div>
-        {/* Navigation Buttons */}
-        <div className="mt-8 flex flex-wrap gap-4 justify-center">
-          <button
-            onClick={() => {
-              setActivePage("issuedBooks");
-              setCurrentPage(1);
-            }}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all duration-300 ${activePage === "issuedBooks" ? "bg-blue-600 text-white shadow-lg scale-105" : "bg-gray-100 text-gray-700 hover:bg-blue-500 hover:text-white hover:scale-105"
-              }`}
-          >
-            📚 Issued Books
-          </button>
-          <button
-            onClick={() => {
-              setActivePage("returnedBooks");
-              setCurrentPage(1);
-            }}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all duration-300 ${activePage === "returnedBooks" ? "bg-blue-600 text-white shadow-lg scale-105" : "bg-gray-100 text-gray-700 hover:bg-blue-500 hover:text-white hover:scale-105"
-              }`}
-          >
-            📅 Returned Books
-          </button>
-          <button
-            onClick={() => {
-              setActivePage("dueDate");
-              setCurrentPage(1);
-            }}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all duration-300 ${activePage === "dueDate" ? "bg-blue-600 text-white shadow-lg scale-105" : "bg-gray-100 text-gray-700 hover:bg-blue-500 hover:text-white hover:scale-105"
-              }`}
-          >
-            ⚠️ Due Date
-          </button>
         </div>
 
         {/* Book List */}
@@ -192,14 +135,13 @@ function Profile() {
                   year: "numeric", month: "long", day: "numeric",
                   hour: "2-digit", minute: "2-digit", second: "2-digit",
                   hour12: true
-                })
-                } |
-                <strong> Due Date:</strong> {new Date(book.issued_date).toLocaleString("en-IN", {
+                })}
+                |
+                <strong> Due Date:</strong> {new Date(book.due_date).toLocaleString("en-IN", {
                   year: "numeric", month: "long", day: "numeric",
                   hour: "2-digit", minute: "2-digit", second: "2-digit",
                   hour12: true
-                })
-                }
+                })}
               </p>
             </div>
           ))}
@@ -208,4 +150,5 @@ function Profile() {
     </div>
   );
 }
+
 export default Profile;
