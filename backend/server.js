@@ -4,7 +4,6 @@ import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
 import fileUpload from "express-fileupload";
 import dotenv from "dotenv";
-
 import authRoutes from "./routes/auth.js";
 import bookRoutes from "./routes/books.js";
 import uploadRoutes from "./routes/upload.js";

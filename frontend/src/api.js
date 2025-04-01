@@ -63,15 +63,34 @@ export const fetchBooks = async () => {
 };
 
 // ✅ Add a New Book to Supabase
-export const addBook = async (bookData) => {
+export const addBook = async (isbn) => {
   try {
-    const { data, error } = await supabase.from("books").insert([bookData]);
+      // Fetch book details from Google Books API
+      const googleResponse = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
+      const googleData = await googleResponse.json();
+      
+      if (!googleData.items || googleData.items.length === 0) {
+          throw new Error("Book not found in Google Books API");
+      }
 
-    if (error) throw error;
+      const bookInfo = googleData.items[0].volumeInfo;
+      const book = {
+          title: bookInfo.title || "Unknown",
+          author: bookInfo.authors ? bookInfo.authors.join(", ") : "Unknown",
+          isbn: isbn,
+          genre: bookInfo.categories ? bookInfo.categories[0] : "Unknown",
+          language: bookInfo.language || "Unknown",
+          edition: bookInfo.publishedDate || "Unknown",
+          cover_url: bookInfo.imageLinks ? bookInfo.imageLinks.thumbnail : "",
+          copies: 1 // Default to 1 copy
+      };
 
-    return data;
+      // Insert into Supabase
+      const { data, error } = await supabase.from("books").insert([book]);
+      if (error) throw error;
+
+      return { success: true, message: "Book added successfully!" };
   } catch (error) {
-    console.error("Error adding book:", error.message);
-    return null;
+      return { success: false, message: error.message };
   }
 };

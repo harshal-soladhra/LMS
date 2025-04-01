@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import NavbarBooks from "../components/NavbarBooks";
@@ -13,21 +12,32 @@ const Books = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [selectedBook, setSelectedBook] = useState(null);
   const [books, setBooks] = useState([]);
+  const [user, setUser] = useState({ id: null });
   const [apiBooks, setApiBooks] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Fetch Books from Supabase
+  // ✅ Fetch User Data & Library Books
   useEffect(() => {
-    const fetchLibraryBooks = async () => {
-      const { data, error } = await supabase.from("books").select("*");
-      if (error) {
-        console.error("🔥 Error fetching books:", error.message);
+    const fetchUserAndLibraryBooks = async () => {
+      const token = localStorage.getItem("supabase_token");
+      if (token) {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) {
+          console.error("🔥 Error fetching user:", userError?.message || "No user found");
+          return;
+        }
+        setUser(user);
+      }
+
+      const { data: booksData, error: booksError } = await supabase.from("books").select("*");
+      if (booksError) {
+        console.error("🔥 Error fetching books:", booksError.message);
       } else {
-        setBooks(data);
+        setBooks(booksData);
       }
       setLoading(false);
     };
-    fetchLibraryBooks();
+    fetchUserAndLibraryBooks();
   }, []);
 
   // ✅ Fetch Books from Open Library API
@@ -69,40 +79,42 @@ const Books = () => {
 
   // ✅ Handle Book Issue
   const handleIssueBook = async (bookId, copies) => {
-    const token = localStorage.getItem("token");
-    if (!token) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      console.error("🔥 Error fetching user:", userError?.message || "No user found");
+      alert("You must be logged in to issue a book.");
       navigate("/SignIn");
       return;
     }
-
+  
     if (copies <= 0) {
       alert("Sorry, this book is currently unavailable.");
       return;
     }
-
+  
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 14); // 14 days from today
+  
     try {
-      const userId = "your-user-id"; // Replace with logged-in user ID
-      const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + 14); // 14 days from today
-
       const { error } = await supabase
         .from("books")
         .update({
-          issued_to: userId,
-          issued_date: new Date(),
-          due_date: dueDate,
-          copies: copies - 1, // ✅ Reduce available copies
+          issued_to: user.id, // ✅ Ensure it's UUID
+          issued_date: new Date().toISOString(), // ✅ Format the date correctly
+          due_date: dueDate.toISOString(),
+          copies: copies - 1,
         })
-        .eq("id", bookId);
-
+        .eq("id", bookId); // ✅ Ensure it's UUID in Supabase
+  
       if (error) throw error;
+      
       alert("Book issued successfully!");
       window.location.reload();
     } catch (err) {
       console.error("🔥 Book Issue Error:", err);
       alert("Failed to issue book.");
     }
-  };
+  };  
 
   return (
     <div className="flex flex-col min-h-screen">

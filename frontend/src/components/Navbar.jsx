@@ -43,7 +43,7 @@ const Navbar = () => {
             { path: "/", label: "Home" },
             { path: "/books", label: "Books" },
             { path: "/my-books", label: "Notification" },
-            { path: "/admin", label: "Admin Panel" },
+            { path: "/add-book", label: "Admin Panel" },
             { path: "/profile", label: "Profile" },
           ].map((item) => (
             <li key={item.path}>

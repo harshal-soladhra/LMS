@@ -15,28 +15,56 @@ function Profile() {
   // 📂 Handle Profile Picture Upload
   const handlePhotoChange = async (e) => {
     const file = e.target.files[0];
-    if (!file || !user) return;
+    if (!file || !user) {
+      console.log("❌ No file selected or user not found!");
+      return;
+    }
 
-    const filePath = `user_${user.id}/${Date.now()}_${file.name}`;
+    // ✅ Store images in a user-specific folder
+    const filePath = `user_${user.id}/profile_pictures/${file.name}_${Date.now()}`;
+    console.log("Uploading to:", filePath);
+    console.log("user id: ",  user.id);
 
-    const { data, error } = await supabase.storage
-      .from("profile-pictures")
-      .upload(filePath, file, { cacheControl: "3600", upsert: true });
+    // ✅ First, delete any existing profile picture
+    if (user.profile_picture) {
+      const oldFilePath = user.profile_picture.split("/").slice(-2).join("/"); // Extract storage path
+      await supabase.storage.from("profile-pictures").remove([oldFilePath]);
+      console.log("Old profile picture deleted.");
+    }
 
+    // ✅ Upload file to Supabase Storage
+    const { data, error } = await supabase.storage.from("profile-pictures").upload(filePath, file, { cacheControl: "3600", upsert: true });
+    if (data) {
+      console.log("File uploaded successfully:", data);
+    }
     if (error) {
       console.error("Upload Error:", error.message);
       return;
     }
 
-    // ✅ Get the public URL
-    const { data: imageUrlData } = supabase.storage.from("profile-pictures").getPublicUrl(filePath);
-    const imageUrl = imageUrlData.publicUrl;
+    // ✅ Fetch Public URL
+    const { data: publicUrlData, error: publicUrlError } = supabase.storage.from("profile-pictures").getPublicUrl(filePath);
+    if (publicUrlError) {
+      console.error("Public URL Error:", publicUrlError.message);
+      return;
+    }
+    const imageUrl = publicUrlData.publicUrl;
 
+    console.log("Uploaded Image URL:", imageUrl);
     setUserPhoto(imageUrl);
 
-    // ✅ Update user profile picture in Supabase database
-    await supabase.from("users").update({ profile_picture: imageUrl }).eq("id", user.id);
+    // ✅ Update `profile_picture` column in `users` table
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({ profile_picture: imageUrl })
+      .eq("id", user.id);
+    if (updateError) {
+      console.error("Database Update Error:", updateError.message);
+    } else {
+      console.log("✅ Profile picture updated in database.");
+    }
   };
+
 
   useEffect(() => {
     const fetchProfileAndBooks = async () => {
@@ -55,10 +83,9 @@ function Profile() {
           .select("id, name, email, profile_picture, role")
           .eq("id", sessionData.session.user.id)
           .single();
-
         if (userError) throw userError;
         setUser(userData);
-        setUserPhoto(userData.profile_picture || "https://via.placeholder.com/150");
+        setUserPhoto(userData.profile_picture || "https://lxfijlxgemdhiccvwdcq.supabase.co/storage/v1/object/public/profile-pictures//Python%20lover,%20streak%20on%20GeeksforGeeks%20platform,%20BTech%20student%20in%20Computer%20Science.png");
 
         // ✅ Fetch books issued to user
         const { data: booksData, error: booksError } = await supabase
@@ -78,6 +105,7 @@ function Profile() {
 
     fetchProfileAndBooks();
   }, [navigate]);
+  console.log("User: ", user)
 
   const booksPerPage = 5;
   const getCurrentBooks = () => {
@@ -110,7 +138,7 @@ function Profile() {
         <div className="flex items-center gap-6">
           <div className="relative w-32 h-32">
             <img
-              src={userPhoto || "https://via.placeholder.com/150"}
+              src={userPhoto || "https://lxfijlxgemdhiccvwdcq.supabase.co/storage/v1/object/public/profile-pictures//Python%20lover,%20streak%20on%20GeeksforGeeks%20platform,%20BTech%20student%20in%20Computer%20Science.png"}
               alt="User Photo"
               className="w-full h-full object-cover rounded-full"
             />
