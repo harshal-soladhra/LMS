@@ -10,7 +10,8 @@ const NavbarBooks = () => {
         <li><Link to="/available-books" className="block hover:text-blue-400">✅ Available Books</Link></li>
         <li><Link to="/issued-books" className="block hover:text-blue-400">📖 Issued Books</Link></li>
         <li><Link to="/reservations" className="block hover:text-blue-400">🔖 Reservations</Link></li>
-        <li><Link to="/history" className="block hover:text-blue-400">📜 History</Link></li>
+        <li><Link to="/ebooks" className="block hover:text-blue-400">📲 E-Books</Link></li>
+        <li><Link to="/audiobooks" className="block hover:text-blue-400">🎧 Audio Books</Link></li>
       </ul>
     </div>
   );

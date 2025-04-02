@@ -1,180 +1,157 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient"; // ✅ Import Supabase client
+import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "../supabaseClient";
 
 function Profile() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [userPhoto, setUserPhoto] = useState(""); // ✅ Store profile picture
-  const [books, setBooks] = useState([]); // ✅ Store real books
-  const [activePage, setActivePage] = useState("issuedBooks");
-  const [currentPage, setCurrentPage] = useState(1);
-
-  // 📂 Handle Profile Picture Upload
-  const handlePhotoChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file || !user) {
-      console.log("❌ No file selected or user not found!");
-      return;
-    }
-
-    // ✅ Store images in a user-specific folder
-    const filePath = `user_${user.id}/profile_pictures/${file.name}_${Date.now()}`;
-    console.log("Uploading to:", filePath);
-    console.log("user id: ",  user.id);
-
-    // ✅ First, delete any existing profile picture
-    if (user.profile_picture) {
-      const oldFilePath = user.profile_picture.split("/").slice(-2).join("/"); // Extract storage path
-      await supabase.storage.from("profile-pictures").remove([oldFilePath]);
-      console.log("Old profile picture deleted.");
-    }
-
-    // ✅ Upload file to Supabase Storage
-    const { data, error } = await supabase.storage.from("profile-pictures").upload(filePath, file, { cacheControl: "3600", upsert: true });
-    if (data) {
-      console.log("File uploaded successfully:", data);
-    }
-    if (error) {
-      console.error("Upload Error:", error.message);
-      return;
-    }
-
-    // ✅ Fetch Public URL
-    const { data: publicUrlData, error: publicUrlError } = supabase.storage.from("profile-pictures").getPublicUrl(filePath);
-    if (publicUrlError) {
-      console.error("Public URL Error:", publicUrlError.message);
-      return;
-    }
-    const imageUrl = publicUrlData.publicUrl;
-
-    console.log("Uploaded Image URL:", imageUrl);
-    setUserPhoto(imageUrl);
-
-    // ✅ Update `profile_picture` column in `users` table
-    const { error: updateError } = await supabase
-      .from("users")
-      .update({ profile_picture: imageUrl })
-      .eq("id", user.id);
-    if (updateError) {
-      console.error("Database Update Error:", updateError.message);
-    } else {
-      console.log("✅ Profile picture updated in database.");
-    }
-  };
-
+  const [userPhoto, setUserPhoto] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState({ name: "", email: "", password: "" });
 
   useEffect(() => {
-    const fetchProfileAndBooks = async () => {
-      try {
-        // ✅ Fetch user session from Supabase
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !sessionData.session) {
-          console.error("❌ No active session! Redirecting to Sign In...");
-          navigate("/signin", { replace: true });
-          return;
-        }
+    const fetchProfile = async () => {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData.session) return navigate("/signin", { replace: true });
 
-        // ✅ Fetch user details from Supabase database
-        const { data: userData, error: userError } = await supabase
-          .from("users")
-          .select("id, name, email, profile_picture, role")
-          .eq("id", sessionData.session.user.id)
-          .single();
-        if (userError) throw userError;
-        setUser(userData);
-        setUserPhoto(userData.profile_picture || "https://lxfijlxgemdhiccvwdcq.supabase.co/storage/v1/object/public/profile-pictures//Python%20lover,%20streak%20on%20GeeksforGeeks%20platform,%20BTech%20student%20in%20Computer%20Science.png");
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("id, name, email, profile_picture, role")
+        .eq("id", sessionData.session.user.id)
+        .single();
 
-        // ✅ Fetch books issued to user
-        const { data: booksData, error: booksError } = await supabase
-          .from("books")
-          .select("id, title, issued_date, due_date, returned_date")
-          .eq("issued_to", userData.id);
+      if (userError) return navigate("/signin", { replace: true });
 
-        if (booksError) throw booksError;
-        setBooks(booksData);
-      } catch (err) {
-        console.error("Profile/Books Fetch Error:", err);
-        navigate("/signin", { replace: true });
-      } finally {
-        setLoading(false);
-      }
+      setUser(userData);
+      setUserPhoto(userData.profile_picture || "");
+      setLoading(false);
     };
 
-    fetchProfileAndBooks();
+    fetchProfile();
   }, [navigate]);
-  console.log("User: ", user)
 
-  const booksPerPage = 5;
-  const getCurrentBooks = () => {
-    let filteredBooks = books;
-    if (activePage === "returnedBooks") {
-      filteredBooks = books.filter((book) => book.returned_date);
-    } else if (activePage === "dueDate") {
-      filteredBooks = books.filter((book) => !book.returned_date);
-    }
-    return filteredBooks.slice((currentPage - 1) * booksPerPage, currentPage * booksPerPage);
+  const handleEditClick = () => {
+    setEditData({ name: user?.name, email: user?.email, password: "" });
+    setIsEditing(true);
   };
 
-  const totalPages = Math.ceil(
-    (activePage === "returnedBooks"
-      ? books.filter((book) => book.returned_date).length
-      : activePage === "dueDate"
-        ? books.filter((book) => !book.returned_date).length
-        : books.length) / booksPerPage
-  );
+  const handleSaveChanges = async () => {
+    const { name, email, password } = editData;
+    const updates = { name, email };
+    if (password) updates.password = password;
 
-  const handlePageChange = (page) => setCurrentPage(page);
+    const { error } = await supabase.from("users").update(updates).eq("id", user.id);
+    if (!error) {
+      setUser({ ...user, name, email });
+      setIsEditing(false);
+    }
+  };
 
   if (loading) return <p>Loading profile...</p>;
-  if (error) return <p className="text-red-500">{error}</p>;
 
   return (
-    <div className="min-h-screen w-full bg-gray-100 p-4 flex justify-center items-center my-20">
-      <div className="bg-white p-6 rounded-2xl shadow-lg w-full max-w-4xl">
-        {/* Profile Header */}
-        <div className="flex items-center gap-6">
-          <div className="relative w-32 h-32">
-            <img
-              src={userPhoto || "https://lxfijlxgemdhiccvwdcq.supabase.co/storage/v1/object/public/profile-pictures//Python%20lover,%20streak%20on%20GeeksforGeeks%20platform,%20BTech%20student%20in%20Computer%20Science.png"}
-              alt="User Photo"
-              className="w-full h-full object-cover rounded-full"
-            />
-            <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" id="photoInput" />
-            <label htmlFor="photoInput" className="absolute bottom-2 right-2 bg-blue-500 text-white p-1 rounded-full text-sm cursor-pointer">
-              📷
-            </label>
+    <div className="min-h-screen w-full bg-gray-900 flex justify-center items-center p-6">
+      <div className="bg-white/10 backdrop-blur-lg p-6 rounded-2xl shadow-xl w-full max-w-4xl relative border border-white/20">
+        {/* Profile Section */}
+        <div className="flex items-center gap-6 border-b border-gray-500 pb-4">
+          <div className="w-24 h-24 rounded-full overflow-hidden">
+            <img src={userPhoto || "https://via.placeholder.com/150"} alt="User" className="w-full h-full object-cover" />
           </div>
           <div>
-            <h2 className="text-2xl font-semibold">{user?.name}</h2>
-            <p className="text-gray-600">{user?.role}</p>
+            <h2 className="text-2xl font-semibold text-white">{user?.name}</h2>
+            <p className="text-gray-300">{user?.email}</p>
           </div>
         </div>
 
-        {/* Book List */}
-        <div className="mt-6 w-full min-h-[calc(100vh-300px)] flex flex-col bg-gray-50 rounded-lg p-4">
-          {getCurrentBooks().map((book) => (
-            <div key={book.id} className="p-4 mb-4 border rounded-lg shadow-sm bg-white flex justify-between">
-              <p><strong>Title:</strong> {book.title}</p>
-              <p>
-                <strong>Issued Date:</strong> {new Date(book.issued_date).toLocaleString("en-IN", {
-                  year: "numeric", month: "long", day: "numeric",
-                  hour: "2-digit", minute: "2-digit", second: "2-digit",
-                  hour12: true
-                })}
-                |
-                <strong> Due Date:</strong> {new Date(book.due_date).toLocaleString("en-IN", {
-                  year: "numeric", month: "long", day: "numeric",
-                  hour: "2-digit", minute: "2-digit", second: "2-digit",
-                  hour12: true
-                })}
-              </p>
-            </div>
+        {/* Edit Button */}
+        <button
+          className="absolute top-4 right-4 bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition-all duration-300"
+          onClick={handleEditClick}
+        >
+          ✏️ Edit
+        </button>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col items-center mt-6 gap-4">
+          {["Issued Books", "Returned Books", "Return Due", "Requested Books", "Transactions"].map((label, index) => (
+            <motion.button
+              key={index}
+              whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 255, 255, 0.6)" }}
+              className="w-64 bg-gray-800 text-white px-5 py-3 rounded-lg text-lg font-semibold transition-all"
+            >
+              {label}
+            </motion.button>
           ))}
         </div>
       </div>
+
+      {/* Edit Profile Modal */}
+      <AnimatePresence>
+        {isEditing && (
+          <>
+            {/* Overlay */}
+            <motion.div
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsEditing(false)}
+            />
+
+            {/* Modal */}
+            <motion.div
+              className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-96 z-50"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <h3 className="text-lg font-semibold mb-3">Edit Profile</h3>
+
+              <label className="block mb-2">
+                <span className="text-gray-400">Name</span>
+                <input
+                  type="text"
+                  value={editData.name}
+                  onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                  className="w-full p-2 border rounded-lg bg-gray-700 text-white"
+                />
+              </label>
+
+              <label className="block mb-2">
+                <span className="text-gray-400">Email</span>
+                <input
+                  type="email"
+                  value={editData.email}
+                  onChange={(e) => setEditData({ ...editData, email: e.target.value })}
+                  className="w-full p-2 border rounded-lg bg-gray-700 text-white"
+                />
+              </label>
+
+              <label className="block mb-2">
+                <span className="text-gray-400">New Password</span>
+                <input
+                  type="password"
+                  value={editData.password}
+                  onChange={(e) => setEditData({ ...editData, password: e.target.value })}
+                  className="w-full p-2 border rounded-lg bg-gray-700 text-white"
+                />
+              </label>
+
+              {/* Buttons */}
+              <div className="flex justify-end mt-4">
+                <button className="bg-gray-500 text-white px-4 py-2 rounded-lg mr-2 hover:bg-gray-600 transition-all" onClick={() => setIsEditing(false)}>
+                  Cancel
+                </button>
+                <button className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all" onClick={handleSaveChanges}>
+                  Save Changes
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

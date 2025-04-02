@@ -6,6 +6,7 @@ import "../style/Style.css";
 import { FaSearch } from "react-icons/fa";
 import { motion } from "framer-motion";
 import { supabase } from "../supabaseClient"; // Import Supabase client
+import Reviews from "../components/reviews";
 
 const books = [
   { title: "Game Development", genre: "Programming" },
@@ -259,6 +260,88 @@ const Main = () => {
 
       {/*best sellers*/}
 
+      <div className="best-sellers flex flex-col md:flex-row justify-center items-center gap-10 p-10 bg-gray-100 ml-60">
+      {/* Image Section */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        whileHover={{ scale: 1.05 }}
+        className="img-part-1 relative w-full md:w-1/2 overflow-hidden rounded-2xl shadow-lgmx-auto md:mx-0">
+        <img
+          src="src/assets/arivals-img/1-best-2025.jpeg"
+          alt="Library"
+          className="w-full h-full object-cover rounded-2xl transform transition-transform duration-300 hover:scale-110"/>
+        <div
+          className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent rounded-2xl"></div>
+      </motion.div>
+
+      {/* Text Section */}
+      <motion.div
+        initial={{ opacity: 0, x: 50 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="text-part-1 w-full md:w-1/2 text-center md:text-left space-y-4 mx-auto md:mx-0">
+        <h2 className="text-3xl font-bold text-gray-800">
+          New Year, New Books!
+        </h2>
+        <p className="text-gray-600 text-lg">
+          Get your reading list ahead of the curve <br />
+          and be the first to request these 25 must-read <br /> books 
+          everyone will be talking about in 2025.
+        </p>
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          className="px-6 py-3 mt-4 text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700 transition-all duration-300">
+          VIEW DETAILS
+        </motion.button>
+      </motion.div>
+    </div>
+
+     {/*second one*/}
+     <hr className="w-1/2 border-t-2 border-gray-300 my-4 mx-auto" />
+
+
+
+    <div className="best-sellers flex flex-col md:flex-row justify-center items-center gap-10 p-10 bg-gray-100 ml-60">
+      {/* Image Section */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        whileHover={{ scale: 1.05 }}
+        className="img-part-1 relative w-full md:w-1/2 overflow-hidden rounded-2xl shadow-lgmx-auto md:mx-0">
+        <img
+          src="src/assets/arivals-img/1-best-2024.jpeg" alt="Library"
+          className="w-full h-full object-cover rounded-2xl transform transition-transform duration-300 hover:scale-110"/>
+        <div
+          className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent rounded-2xl"></div>
+      </motion.div>
+
+      {/* Text Section */}
+      <motion.div
+        initial={{ opacity: 0, x: 50 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="text-part-1 w-full md:w-1/2 text-center md:text-left space-y-4 mx-auto md:mx-0">
+        <h2 className="text-3xl font-bold text-gray-800">
+        Check Out <br />
+        All the Best Books of 2024
+        </h2>
+        <p className="text-gray-600 text-lg">
+        As we near the end of 2024, there are so many <br /> wonderful books to look back on—and still more <br />to come. To make things easy, we’ve compiled <br /> some  of the Best Books and Audiobooks of the <br /> Year lists to take the guess work  out of finding <br /> your next great read(s).
+        </p>
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          className="px-6 py-3 mt-4 text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700 transition-all duration-300">
+          VIEW DETAILS
+        </motion.button>
+      </motion.div>
+    </div>
+      
+
       {/* Request Book Section */}
       <div className="text-center mt-10">
         <motion.button
@@ -342,6 +425,9 @@ const Main = () => {
           </div>
         </section>
       </div>
+
+      <Reviews /> {/* ✅ Use the component here */}
+
       {/* Footer Section */}
     </div>
   );
