@@ -3,6 +3,28 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../supabaseClient";
 
+// Dummy data for books
+const dummyBooks = {
+  issuedbooks: [
+    { bookName: "The Great Gatsby", author: "F. Scott Fitzgerald", issuedDate: "2025-03-01" },
+    { bookName: "1984", author: "George Orwell", issuedDate: "2025-02-15" },
+    { bookName: "To Kill a Mockingbird", author: "Harper Lee", issuedDate: "2025-01-20" },
+    { bookName: "Pride and Prejudice", author: "Jane Austen", issuedDate: "2025-03-10" },
+  ],
+  returnedbooks: [
+    { bookName: "Moby Dick", author: "Herman Melville", issuedDate: "2024-12-01" },
+    { bookName: "The Catcher in the Rye", author: "J.D. Salinger", issuedDate: "2024-11-15" },
+    { bookName: "Brave New World", author: "Aldous Huxley", issuedDate: "2024-10-20" },
+    { bookName: "Jane Eyre", author: "Charlotte Brontë", issuedDate: "2024-09-10" },
+  ],
+  returndue: [
+    { bookName: "The Hobbit", author: "J.R.R. Tolkien", issuedDate: "2025-03-15" },
+    { bookName: "Fahrenheit 451", author: "Ray Bradbury", issuedDate: "2025-02-28" },
+    { bookName: "The Odyssey", author: "Homer", issuedDate: "2025-01-30" },
+    { bookName: "Dracula", author: "Bram Stoker", issuedDate: "2025-03-05" },
+  ],
+};
+
 function Profile() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
@@ -10,6 +32,7 @@ function Profile() {
   const [userPhoto, setUserPhoto] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({ name: "", email: "", password: "" });
+  const [popup, setPopup] = useState(null); // For managing popups
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -49,6 +72,12 @@ function Profile() {
     }
   };
 
+  const openPopup = (type) => {
+    setPopup(type);
+  };
+
+  const closePopup = () => setPopup(null);
+
   if (loading) return <p>Loading profile...</p>;
 
   return (
@@ -79,7 +108,12 @@ function Profile() {
             <motion.button
               key={index}
               whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 255, 255, 0.6)" }}
-              className="w-64 bg-gray-800 text-white px-5 py-3 rounded-lg text-lg font-semibold transition-all"
+              className="w-64 bg-gray-800 text-white px-5 py-3 rounded-lg text-lg font-semibold transition-all hover:bg-gray-700"
+              onClick={() => {
+                if (label === "Issued Books") openPopup("issuedbooks");
+                if (label === "Returned Books") openPopup("returnedbooks");
+                if (label === "Return Due") openPopup("returndue");
+              }}
             >
               {label}
             </motion.button>
@@ -148,6 +182,63 @@ function Profile() {
                   Save Changes
                 </button>
               </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Book Popup */}
+      <AnimatePresence>
+        {popup && (
+          <>
+            <motion.div
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={closePopup}
+            />
+            <motion.div
+              className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-[600px] z-50"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <h3 className="text-lg font-semibold mb-4 capitalize">
+                {popup === "issuedbooks" ? "Issued Books" : popup === "returnedbooks" ? "Returned Books" : "Return Due"}
+              </h3>
+              <div className="space-y-4">
+                {/* Column Titles */}
+                <div className="flex justify-between p-3 bg-blue-600 rounded-lg font-semibold">
+                  <span className="w-1/3">Book Name</span>
+                  <span className="w-1/3 text-center">Author Name</span>
+                  <span className="w-1/3 text-right">Date</span>
+                </div>
+                {/* Book Data */}
+                {dummyBooks[popup].length > 0 ? (
+                  dummyBooks[popup].map((book, index) => (
+                    <motion.div
+                      key={index}
+                      className="flex justify-between p-3 bg-gray-700 rounded-lg"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                    >
+                      <span className="w-1/3">{book.bookName}</span>
+                      <span className="w-1/3 text-center">{book.author}</span>
+                      <span className="w-1/3 text-right">{book.issuedDate}</span>
+                    </motion.div>
+                  ))
+                ) : (
+                  <p className="text-gray-400">No data available</p>
+                )}
+              </div>
+              <button
+                className="mt-4 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all w-full"
+                onClick={closePopup}
+              >
+                Close
+              </button>
             </motion.div>
           </>
         )}
