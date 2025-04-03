@@ -66,7 +66,13 @@ const AvailableBooks = () => {
           copies: copies - 1, // ✅ Reduce available copies
         })
         .eq("id", bookId);
-
+      // ✅ Add a notification for the user
+      await supabase.from("notifications").insert([
+        {
+          user_id: userData.id,
+          message: `You have successfully issued the book! Due date: ${dueDate.toDateString()}`,
+        },
+      ]);
       if (error) throw error;
       alert("Book issued successfully!");
       window.location.reload();
@@ -132,9 +138,8 @@ const AvailableBooks = () => {
                 {filteredBooks.map((book) => (
                   <motion.div
                     key={book.id}
-                    className={`p-4 bg-gray-100 shadow-md rounded-lg transition duration-300 ${
-                      book.copies === 0 ? "border-red-500 border-2" : "hover:shadow-xl"
-                    }`}
+                    className={`p-4 bg-gray-100 shadow-md rounded-lg transition duration-300 ${book.copies === 0 ? "border-red-500 border-2" : "hover:shadow-xl"
+                      }`}
                     whileHover={{ scale: 1.03 }}
                   >
                     <h3 className="font-semibold text-lg">{book.title}</h3>
@@ -151,9 +156,8 @@ const AvailableBooks = () => {
 
                     <button
                       onClick={() => handleIssueBook(book.id, book.copies)}
-                      className={`mt-2 px-3 py-1 rounded text-white ${
-                        book.copies > 0 ? "bg-green-500 hover:bg-green-600" : "bg-gray-400 cursor-not-allowed"
-                      }`}
+                      className={`mt-2 px-3 py-1 rounded text-white ${book.copies > 0 ? "bg-green-500 hover:bg-green-600" : "bg-gray-400 cursor-not-allowed"
+                        }`}
                       disabled={book.copies === 0}
                     >
                       {book.copies > 0 ? "Issue Book" : "Unavailable"}

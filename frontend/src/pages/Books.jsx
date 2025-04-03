@@ -86,15 +86,15 @@ const Books = () => {
       navigate("/SignIn");
       return;
     }
-  
+
     if (copies <= 0) {
       alert("Sorry, this book is currently unavailable.");
       return;
     }
-  
+
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 14); // 14 days from today
-  
+
     try {
       const { error } = await supabase
         .from("books")
@@ -105,16 +105,22 @@ const Books = () => {
           copies: copies - 1,
         })
         .eq("id", bookId); // ✅ Ensure it's UUID in Supabase
-  
+
       if (error) throw error;
-      
+      // ✅ Add a notification for the user
+      await supabase.from("notifications").insert([
+        {
+          user_id: user.id,
+          message: `You have successfully issued the book! Due date: ${dueDate.toDateString()}`,
+        },
+      ]);
       alert("Book issued successfully!");
       window.location.reload();
     } catch (err) {
       console.error("🔥 Book Issue Error:", err);
       alert("Failed to issue book.");
     }
-  };  
+  };
 
   return (
     <div className="flex flex-col min-h-screen">
