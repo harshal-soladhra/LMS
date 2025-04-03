@@ -24,46 +24,45 @@ const Navbar = () => {
 
   useEffect(() => {
     const fetchNotifications = async () => {
-      const { data: user, error: userError } = await supabase.auth.getUser(); // ✅ Get user safely
-      if (userError || !user || !user.user) {
+      const { data: user, error: userError } = await supabase.auth.getUser();
+      if (userError || !user?.user?.id) {
         console.error("❌ Error fetching user:", userError);
         return;
       }
-
-      const userId = user.user.id; // ✅ Ensure valid user ID
-      if (!userId) {
-        console.error("❌ User ID is undefined!");
-        console.log("User data:", user.user.id);
-        return;
-      }
-
+  
+      const userId = user.user.id;
+  
       const { data, error } = await supabase
         .from("notifications")
         .select("*")
-        .eq("user_id", userId) // ✅ Use valid UUID
+        .eq("user_id", userId)
         .eq("is_read", false)
         .order("created_at", { ascending: false });
-
+  
       if (error) {
         console.error("🔥 Error fetching notifications:", error);
       } else {
-        console.log("✅ Notifications fetched:", data);
         setNotifications(data);
         setUnreadCount(data.length);
       }
     };
-
-    fetchNotifications();
-    // ✅ Real-time notification updates
+  
+    fetchNotifications(); // Fetch existing notifications
+  
+    // Listen for real-time notifications
     const subscription = supabase
-      .channel("notifications")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, fetchNotifications)
+      .channel("notifications") // Create a channel
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, (payload) => {
+        console.log("📩 New Notification:", payload.new);
+        setNotifications((prev) => [payload.new, ...prev]); // Add new notification to state
+        setUnreadCount((prev) => prev + 1); // Increase unread count
+      })
       .subscribe();
-
+  
     return () => {
-      supabase.removeChannel(subscription);
+      subscription.unsubscribe(); // Cleanup on unmount
     };
-  }, []);
+  }, []);  
 
 
 const markAsRead = async (id) => {

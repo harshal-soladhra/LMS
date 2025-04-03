@@ -15,6 +15,8 @@ const Books = () => {
   const [user, setUser] = useState({ id: null });
   const [apiBooks, setApiBooks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // ✅ Fetch User Data & Library Books
   useEffect(() => {
@@ -40,29 +42,46 @@ const Books = () => {
     fetchUserAndLibraryBooks();
   }, []);
 
-  // ✅ Fetch Books from Open Library API
+  // ✅ Fetch Books from Open Library API with Pagination
   useEffect(() => {
     const fetchAPIbooks = async () => {
+      setLoadingMore(true);
       try {
-        const response = await fetch(`https://openlibrary.org/search.json?q=programming&limit=10`);
+        const response = await fetch(`https://openlibrary.org/search.json?q=programming&limit=10&page=${page}`);
         const data = await response.json();
-        const formattedBooks = data.docs.map((book) => ({
-          id: book.key, // OpenLibrary ID
+
+        if (data.docs.length === 0) {
+          setLoadingMore(false);
+          return;
+        }
+
+        const formattedBooks = data.docs.map((book, index) => ({
+          id: `${book.key}-${index}`,  // Make sure each key is unique
           title: book.title,
           author: book.author_name?.join(", ") || "Unknown",
           genre: "Unknown",
           language: book.language?.[0] || "Unknown",
           edition: book.edition_count || "Unknown",
-          copies: 0, // 📌 Mark as unavailable in the library
-          isExternal: true, // 📌 Differentiate API books
-        }));
-        setApiBooks(formattedBooks);
+          coverImage: book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-M.jpg` : null,
+          copies: 0,
+          isExternal: true,
+        }));        
+
+        setApiBooks((prevBooks) => [...prevBooks, ...formattedBooks]);
       } catch (error) {
         console.error("🔥 Error fetching API books:", error);
+      } finally {
+        setLoadingMore(false);
       }
     };
+
     fetchAPIbooks();
-  }, []);
+  }, [page]); // Fetch books when page changes
+
+  // ✅ Load More Books
+  const loadMoreBooks = () => {
+    setPage((prevPage) => prevPage + 1);
+  };
 
   // ✅ Merge Library Books & API Books
   const mergedBooks = [...books, ...apiBooks];
@@ -177,15 +196,45 @@ const Books = () => {
                     <p className="text-sm text-gray-600">Language: {book.language}</p>
                     <p className="text-sm text-gray-600">Edition: {book.edition}</p>
                     <p className="text-sm text-gray-600">Copies Available: {book.copies}</p>
+                    {/* {book.coverImage && (
+                      <img src={book.coverImage} alt={book.title} className="w-full h-48 object-cover mt-2" />
+                    )} */}
+                    <div className="flex gap-10">
+                      {book.isExternal ? (
 
-                    {book.isExternal ? (
-                      <button className="mt-2 px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600">
-                        Request Book
-                      </button>
-                    ) : (
-                      <button onClick={() => handleIssueBook(book.id, book.copies)} className={`mt-2 px-3 py-1 rounded text-white ${book.copies > 0 ? "bg-green-500 hover:bg-green-600" : "bg-gray-400 cursor-not-allowed"}`}>
-                        {book.copies > 0 ? "Issue Book" : "Out of Stock"}
-                      </button>
+                        <button className="mt-2 px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600">
+                          Request Book
+                        </button>
+                      ) : (
+                        <button onClick={() => handleIssueBook(book.id, book.copies)} className={`mt-2 px-3 py-1 rounded text-white ${book.copies > 0 ? "bg-green-500 hover:bg-green-600" : "bg-gray-400 cursor-not-allowed"}`}>
+                          {book.copies > 0 ? "Issue Book" : "Out of Stock"}
+                        </button>
+                      )}
+                      <div>
+                        <button
+                          className="mt-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                          onClick={() => setSelectedBook(book)}
+                        >
+                          View Details
+                        </button>
+                      </div>
+                    </div>
+                    {selectedBook && (
+                      <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                        <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+                          <h2 className="text-xl font-bold">{selectedBook.title}</h2>
+                          {selectedBook.coverImage && (
+                            <img src={selectedBook.coverImage} alt={selectedBook.title} className="w-full h-48 object-cover mt-2" />
+                          )}
+                          <p><strong>Author:</strong> {selectedBook.author}</p>
+                          <p><strong>Genre:</strong> {selectedBook.genre}</p>
+                          <p><strong>Language:</strong> {selectedBook.language}</p>
+                          <p><strong>Edition:</strong> {selectedBook.edition}</p>
+                          <button className="mt-4 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600" onClick={() => setSelectedBook(null)}>
+                            Close
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -194,6 +243,17 @@ const Books = () => {
           </div>
         </div>
       </div>
+      <div className="flex justify-center items-center mt-4">
+        {loadingMore && <p>Loading more books...</p>}
+      </div>
+      {/* Load More Button */}
+      <button
+        className="mt-4 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+        onClick={loadMoreBooks}
+        disabled={loadingMore}
+      >
+        {loadingMore ? "Loading..." : "Load More"}
+      </button>
     </div>
   );
 };
