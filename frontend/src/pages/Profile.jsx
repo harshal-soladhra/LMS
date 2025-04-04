@@ -3,27 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../supabaseClient";
 
-// Dummy data for books with late fees
-const dummyBooks = {
-  issuedbooks: [
-    { bookName: "The Great Gatsby", author: "F. Scott Fitzgerald", issuedDate: "2025-03-01" },
-    { bookName: "1984", author: "George Orwell", issuedDate: "2025-02-15" },
-    { bookName: "To Kill a Mockingbird", author: "Harper Lee", issuedDate: "2025-01-20" },
-    { bookName: "Pride and Prejudice", author: "Jane Austen", issuedDate: "2025-03-10" },
-  ],
-  returnedbooks: [
-    { bookName: "Moby Dick", author: "Herman Melville", issuedDate: "2024-12-01", lateFees: 50 },
-    { bookName: "The Catcher in the Rye", author: "J.D. Salinger", issuedDate: "2024-11-15", lateFees: 0 },
-    { bookName: "Brave New World", author: "Aldous Huxley", issuedDate: "2024-10-20", lateFees: 30 },
-    { bookName: "Jane Eyre", author: "Charlotte Brontë", issuedDate: "2024-09-10", lateFees: 20 },
-  ],
-  returndue: [
-    { bookName: "The Hobbit", author: "J.R.R. Tolkien", issuedDate: "2025-03-15", lateFees: 0 },
-    { bookName: "Fahrenheit 451", author: "Ray Bradbury", issuedDate: "2025-02-28", lateFees: 10 },
-    { bookName: "The Odyssey", author: "Homer", issuedDate: "2025-01-30", lateFees: 0 },
-    { bookName: "Dracula", author: "Bram Stoker", issuedDate: "2025-03-05", lateFees: 15 },
-  ],
-};
 
 function Profile() {
   const navigate = useNavigate();
@@ -35,28 +14,69 @@ function Profile() {
   const [popup, setPopup] = useState(null);
   const [lateFeesPopup, setLateFeesPopup] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [booksData, setBooksData] = useState(dummyBooks);
-
+  const [booksData, setBooksData] = useState(
+    {
+      issuedbooks: [],
+      returnedbooks: [],
+      returndue: [],
+    }
+  );
+  
   useEffect(() => {
     const fetchProfile = async () => {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !sessionData.session) return navigate("/signin", { replace: true });
-
+      
       const { data: userData, error: userError } = await supabase
-        .from("users")
-        .select("id, name, email, profile_picture, role")
-        .eq("id", sessionData.session.user.id)
-        .single();
-
+      .from("users")
+      .select("id, name, email, profile_picture, role")
+      .eq("id", sessionData.session.user.id)
+      .single();
+      
       if (userError) return navigate("/signin", { replace: true });
-
+      
       setUser(userData);
       setUserPhoto(userData.profile_picture || "https://via.placeholder.com/150");
+      const fetchBooksData = async (userId) => {
+        try {
+          const { data: issuedBooks, error: issuedError } = await supabase
+            .from("books")
+            .select("*")
+            .eq("issued_to", userId)
+            // .eq("return_date","");
+    
+          const { data: returnedBooks, error: returnedError } = await supabase
+            .from("books")
+            .select("*")
+            .eq("issued_to", userId);
+    
+          const { data: returnDueBooks, error: dueError } = await supabase
+            .from("books")
+            .select("*")
+            .eq("issued_to", userId);
+    
+          if (issuedError || returnedError || dueError) {
+            console.error("Error fetching books data:", issuedError || returnedError || dueError);
+            return;
+          }
+    
+          setBooksData({
+            issuedbooks: issuedBooks || [],
+            returnedbooks: returnedBooks || [],
+            returndue: returnDueBooks || [],
+          });
+        } catch (err) {
+          console.error("Unexpected error:", err);
+        }
+        if (!booksData) return <p>Loading book data...</p>;
+      };
+      await fetchBooksData(userData.id);
       setLoading(false);
     };
-
+  
     fetchProfile();
   }, [navigate]);
+  
 
   const handleEditClick = () => {
     setEditData({ name: user?.name, email: user?.email, password: "" });
@@ -80,7 +100,7 @@ function Profile() {
     if (!file || !user) return;
 
     const filePath = `user_${user.id}/profile_pictures/${file.name}_${Date.now()}`;
-    
+
     if (user.profile_picture) {
       const oldFilePath = user.profile_picture.split("/").slice(-2).join("/");
       await supabase.storage.from("profile-pictures").remove([oldFilePath]);
@@ -297,9 +317,9 @@ function Profile() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
                     >
-                      <span className="w-1/3">{book.bookName}</span>
+                      <span className="w-1/3">{book.title}</span>
                       <span className="w-1/3 text-center">{book.author}</span>
-                      <span className={popup === "returndue" ? "w-1/6 text-right" : "w-1/3 text-right"}>{book.issuedDate}</span>
+                      <span className={popup === "returndue" ? "w-1/6 text-right" : "w-1/3 text-right"}>{book.issued_date}</span>
                       {(popup === "returndue" || popup === "returnedbooks") && (
                         <span className="w-1/6 text-right">${book.lateFees || 0}</span>
                       )}
