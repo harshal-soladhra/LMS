@@ -66,14 +66,10 @@ const Books = () => {
           coverImage: book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-M.jpg` : null,
           copies: 0,
           isExternal: true,
-<<<<<<< HEAD
-        }));k        
-=======
           firstPublishYear: book.first_publish_year || "Unknown",
           numberOfPages: book.number_of_pages_median || "Unknown",
           subjects: book.subject?.slice(0, 3).join(", ") || "Unknown",
         }));
->>>>>>> a144049c1f106b51081d4a307ea43ce81a181429
 
         setApiBooks((prevBooks) => [...prevBooks, ...formattedBooks]);
       } catch (error) {
