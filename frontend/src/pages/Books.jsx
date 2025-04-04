@@ -65,7 +65,7 @@ const Books = () => {
           coverImage: book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-M.jpg` : null,
           copies: 0,
           isExternal: true,
-        }));        
+        }));k        
 
         setApiBooks((prevBooks) => [...prevBooks, ...formattedBooks]);
       } catch (error) {
