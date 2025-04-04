@@ -3,6 +3,28 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../supabaseClient";
 
+// Dummy data for books with late fees
+const dummyBooks = {
+  issuedbooks: [
+    { bookName: "The Great Gatsby", author: "F. Scott Fitzgerald", issuedDate: "2025-03-01" },
+    { bookName: "1984", author: "George Orwell", issuedDate: "2025-02-15" },
+    { bookName: "To Kill a Mockingbird", author: "Harper Lee", issuedDate: "2025-01-20" },
+    { bookName: "Pride and Prejudice", author: "Jane Austen", issuedDate: "2025-03-10" },
+  ],
+  returnedbooks: [
+    { bookName: "Moby Dick", author: "Herman Melville", issuedDate: "2024-12-01", lateFees: 50 },
+    { bookName: "The Catcher in the Rye", author: "J.D. Salinger", issuedDate: "2024-11-15", lateFees: 0 },
+    { bookName: "Brave New World", author: "Aldous Huxley", issuedDate: "2024-10-20", lateFees: 30 },
+    { bookName: "Jane Eyre", author: "Charlotte Brontë", issuedDate: "2024-09-10", lateFees: 20 },
+  ],
+  returndue: [
+    { bookName: "The Hobbit", author: "J.R.R. Tolkien", issuedDate: "2025-03-15", lateFees: 0 },
+    { bookName: "Fahrenheit 451", author: "Ray Bradbury", issuedDate: "2025-02-28", lateFees: 10 },
+    { bookName: "The Odyssey", author: "Homer", issuedDate: "2025-01-30", lateFees: 0 },
+    { bookName: "Dracula", author: "Bram Stoker", issuedDate: "2025-03-05", lateFees: 15 },
+  ],
+};
+
 function Profile() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
@@ -10,6 +32,10 @@ function Profile() {
   const [userPhoto, setUserPhoto] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({ name: "", email: "", password: "" });
+  const [popup, setPopup] = useState(null);
+  const [lateFeesPopup, setLateFeesPopup] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [booksData, setBooksData] = useState(dummyBooks);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -25,7 +51,7 @@ function Profile() {
       if (userError) return navigate("/signin", { replace: true });
 
       setUser(userData);
-      setUserPhoto(userData.profile_picture || "");
+      setUserPhoto(userData.profile_picture || "https://via.placeholder.com/150");
       setLoading(false);
     };
 
@@ -49,15 +75,95 @@ function Profile() {
     }
   };
 
+  const handlePhotoChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !user) return;
+
+    const filePath = `user_${user.id}/profile_pictures/${file.name}_${Date.now()}`;
+    
+    if (user.profile_picture) {
+      const oldFilePath = user.profile_picture.split("/").slice(-2).join("/");
+      await supabase.storage.from("profile-pictures").remove([oldFilePath]);
+    }
+
+    const { error: uploadError } = await supabase.storage
+      .from("profile-pictures")
+      .upload(filePath, file, { cacheControl: "3600", upsert: true });
+
+    if (uploadError) {
+      console.error("Upload Error:", uploadError.message);
+      return;
+    }
+
+    const { data: publicUrlData } = supabase.storage.from("profile-pictures").getPublicUrl(filePath);
+    const imageUrl = publicUrlData.publicUrl;
+
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({ profile_picture: imageUrl })
+      .eq("id", user.id);
+
+    if (!updateError) {
+      setUserPhoto(imageUrl);
+      setUser({ ...user, profile_picture: imageUrl });
+    }
+  };
+
+  const openPopup = (type) => {
+    setPopup(type);
+  };
+
+  const closePopup = () => setPopup(null);
+
+  const handleReturnBook = (bookName) => {
+    console.log(`Returning book: ${bookName}`);
+  };
+
+  const calculateTotalFees = (type) => {
+    return booksData[type].reduce((total, book) => total + (book.lateFees || 0), 0);
+  };
+
+  const totalReturnedFees = calculateTotalFees("returnedbooks");
+  const totalDueFees = calculateTotalFees("returndue");
+  const totalLateFees = totalReturnedFees + totalDueFees;
+
+  const handlePayNow = () => {
+    setBooksData({
+      ...booksData,
+      returnedbooks: booksData.returnedbooks.map(book => ({ ...book, lateFees: 0 })),
+      returndue: booksData.returndue.map(book => ({ ...book, lateFees: 0 }))
+    });
+    setPaymentSuccess(true);
+  };
+
+  const closePaymentSuccess = () => {
+    setPaymentSuccess(false);
+    setLateFeesPopup(false);
+  };
+
   if (loading) return <p>Loading profile...</p>;
 
   return (
     <div className="min-h-screen w-full bg-gray-900 flex justify-center items-center p-6">
       <div className="bg-white/10 backdrop-blur-lg p-6 rounded-2xl shadow-xl w-full max-w-4xl relative border border-white/20">
-        {/* Profile Section */}
         <div className="flex items-center gap-6 border-b border-gray-500 pb-4">
-          <div className="w-24 h-24 rounded-full overflow-hidden">
-            <img src={userPhoto || "https://via.placeholder.com/150"} alt="User" className="w-full h-full object-cover" />
+          <div className="relative w-24 h-24">
+            <div className="rounded-full overflow-hidden w-full h-full">
+              <img src={userPhoto} alt="User" className="w-full h-full object-cover" />
+            </div>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoChange}
+              className="hidden"
+              id="photoInput"
+            />
+            <label
+              htmlFor="photoInput"
+              className="absolute bottom-0 right-0 translate-x-1/4 translate-y-1/4 bg-blue-500 text-white p-2 rounded-full text-sm cursor-pointer hover:bg-blue-600 transition-all z-10"
+            >
+              📷
+            </label>
           </div>
           <div>
             <h2 className="text-2xl font-semibold text-white">{user?.name}</h2>
@@ -65,7 +171,6 @@ function Profile() {
           </div>
         </div>
 
-        {/* Edit Button */}
         <button
           className="absolute top-4 right-4 bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition-all duration-300"
           onClick={handleEditClick}
@@ -73,13 +178,19 @@ function Profile() {
           ✏️ Edit
         </button>
 
-        {/* Action Buttons */}
         <div className="flex flex-col items-center mt-6 gap-4">
-          {["Issued Books", "Returned Books", "Return Due", "Requested Books", "Transactions"].map((label, index) => (
+          {["Issued Books", "Returned Books", "Return Due", "Requested Books", "Transactions", "Late Fees"].map((label, index) => (
             <motion.button
               key={index}
               whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 255, 255, 0.6)" }}
-              className="w-64 bg-gray-800 text-white px-5 py-3 rounded-lg text-lg font-semibold transition-all"
+              className={`w-64 bg-gray-800 text-white px-5 py-3 rounded-lg text-lg font-semibold transition-all hover:bg-gray-700 ${label === "Late Fees" && totalLateFees === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
+              onClick={() => {
+                if (label === "Issued Books") openPopup("issuedbooks");
+                if (label === "Returned Books") openPopup("returnedbooks");
+                if (label === "Return Due") openPopup("returndue");
+                if (label === "Late Fees" && totalLateFees > 0) setLateFeesPopup(true);
+              }}
+              disabled={label === "Late Fees" && totalLateFees === 0}
             >
               {label}
             </motion.button>
@@ -87,11 +198,9 @@ function Profile() {
         </div>
       </div>
 
-      {/* Edit Profile Modal */}
       <AnimatePresence>
         {isEditing && (
           <>
-            {/* Overlay */}
             <motion.div
               className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
               initial={{ opacity: 0 }}
@@ -99,8 +208,6 @@ function Profile() {
               exit={{ opacity: 0 }}
               onClick={() => setIsEditing(false)}
             />
-
-            {/* Modal */}
             <motion.div
               className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-96 z-50"
               initial={{ scale: 0.9, opacity: 0 }}
@@ -108,7 +215,6 @@ function Profile() {
               exit={{ scale: 0.9, opacity: 0 }}
             >
               <h3 className="text-lg font-semibold mb-3">Edit Profile</h3>
-
               <label className="block mb-2">
                 <span className="text-gray-400">Name</span>
                 <input
@@ -118,7 +224,6 @@ function Profile() {
                   className="w-full p-2 border rounded-lg bg-gray-700 text-white"
                 />
               </label>
-
               <label className="block mb-2">
                 <span className="text-gray-400">Email</span>
                 <input
@@ -128,7 +233,6 @@ function Profile() {
                   className="w-full p-2 border rounded-lg bg-gray-700 text-white"
                 />
               </label>
-
               <label className="block mb-2">
                 <span className="text-gray-400">New Password</span>
                 <input
@@ -138,16 +242,160 @@ function Profile() {
                   className="w-full p-2 border rounded-lg bg-gray-700 text-white"
                 />
               </label>
-
-              {/* Buttons */}
               <div className="flex justify-end mt-4">
-                <button className="bg-gray-500 text-white px-4 py-2 rounded-lg mr-2 hover:bg-gray-600 transition-all" onClick={() => setIsEditing(false)}>
+                <button
+                  className="bg-gray-500 text-white px-4 py-2 rounded-lg mr-2 hover:bg-gray-600 transition-all"
+                  onClick={() => setIsEditing(false)}
+                >
                   Cancel
                 </button>
-                <button className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all" onClick={handleSaveChanges}>
+                <button
+                  className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all"
+                  onClick={handleSaveChanges}
+                >
                   Save Changes
                 </button>
               </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {popup && (
+          <>
+            <motion.div
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={closePopup}
+            />
+            <motion.div
+              className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-[600px] z-50"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <h3 className="text-lg font-semibold mb-4 capitalize">
+                {popup === "issuedbooks" ? "Issued Books" : popup === "returnedbooks" ? "Returned Books" : "Return Due"}
+              </h3>
+              <div className="space-y-4">
+                <div className="flex justify-between p-3 bg-blue-600 rounded-lg font-semibold">
+                  <span className="w-1/3">Book Name</span>
+                  <span className="w-1/3 text-center">Author Name</span>
+                  <span className={popup === "returndue" ? "w-1/6 text-right" : "w-1/3 text-right"}>Date</span>
+                  {(popup === "returndue" || popup === "returnedbooks") && <span className="w-1/6 text-right">Late Fees</span>}
+                  {popup === "returndue" && <span className="w-1/6 text-right">Action</span>}
+                </div>
+                {booksData[popup].length > 0 ? (
+                  booksData[popup].map((book, index) => (
+                    <motion.div
+                      key={index}
+                      className="flex justify-between p-3 bg-gray-700 rounded-lg"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                    >
+                      <span className="w-1/3">{book.bookName}</span>
+                      <span className="w-1/3 text-center">{book.author}</span>
+                      <span className={popup === "returndue" ? "w-1/6 text-right" : "w-1/3 text-right"}>{book.issuedDate}</span>
+                      {(popup === "returndue" || popup === "returnedbooks") && (
+                        <span className="w-1/6 text-right">${book.lateFees || 0}</span>
+                      )}
+                      {popup === "returndue" && (
+                        <span className="w-1/6 text-right">
+                          <button
+                            className="bg-green-500 text-white px-2 py-1 rounded-lg hover:bg-green-600 transition-all"
+                            onClick={() => handleReturnBook(book.bookName)}
+                          >
+                            Return
+                          </button>
+                        </span>
+                      )}
+                    </motion.div>
+                  ))
+                ) : (
+                  <p className="text-gray-400">No data available</p>
+                )}
+                {(popup === "returnedbooks" || popup === "returndue") && (
+                  <div className="flex justify-end p-3 bg-gray-700 rounded-lg">
+                    <span className="font-semibold">Total Fees: ${calculateTotalFees(popup)}</span>
+                  </div>
+                )}
+              </div>
+              <button
+                className="mt-4 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all w-full"
+                onClick={closePopup}
+              >
+                Close
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {lateFeesPopup && (
+          <>
+            <motion.div
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setLateFeesPopup(false)}
+            />
+            <motion.div
+              className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-96 z-50"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <h3 className="text-lg font-semibold mb-4">Late Fees</h3>
+              <p className="mb-4">Total Late Fees: ${totalLateFees}</p>
+              <div className="flex justify-between">
+                <button
+                  className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all"
+                  onClick={handlePayNow}
+                >
+                  Pay Now
+                </button>
+                <button
+                  className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-all"
+                  onClick={() => setLateFeesPopup(false)}
+                >
+                  Pay Later
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {paymentSuccess && (
+          <>
+            <motion.div
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={closePaymentSuccess}
+            />
+            <motion.div
+              className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-96 z-50"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <h3 className="text-lg font-semibold mb-4">Payment Successful</h3>
+              <p className="mb-4">Your late fees have been successfully paid!</p>
+              <button
+                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all w-full"
+                onClick={closePaymentSuccess}
+              >
+                Close
+              </button>
             </motion.div>
           </>
         )}
