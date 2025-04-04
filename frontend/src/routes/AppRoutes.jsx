@@ -9,6 +9,7 @@ import AvailableBooks from "../pages/AvailableBooks";
 import AddBook from "../pages/AddBook";
 import Ebooks from "../pages/Ebooks";
 import AudioBooks from "../pages/AudioBooks";
+import AdminProfile from "../pages/AdminProfile";
 const AppRoutes = () => {
     return (
         <Routes>
@@ -23,6 +24,7 @@ const AppRoutes = () => {
             <Route path="/available-books" element={<AvailableBooks/>} />
             <Route path="/ebooks" element={<Ebooks />} />
             <Route path="/audiobooks" element={<AudioBooks />} />
+            <Route path="/adminprofile" element={<AdminProfile />} />
             {/* 404 Page */}
             <Route path="*" element={<h1>404 - Page Not Found</h1>} />
         </Routes>

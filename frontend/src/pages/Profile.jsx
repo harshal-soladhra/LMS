@@ -53,6 +53,11 @@ function Profile() {
       setUser(userData);
       setUserPhoto(userData.profile_picture || "https://via.placeholder.com/150");
       setLoading(false);
+
+      // Redirect to AdminProfile if role is admin
+      if (userData.role === "admin") {
+        navigate("/adminprofile", { replace: true });
+      }
     };
 
     fetchProfile();
@@ -80,7 +85,6 @@ function Profile() {
     if (!file || !user) return;
 
     const filePath = `user_${user.id}/profile_pictures/${file.name}_${Date.now()}`;
-    
     if (user.profile_picture) {
       const oldFilePath = user.profile_picture.split("/").slice(-2).join("/");
       await supabase.storage.from("profile-pictures").remove([oldFilePath]);
@@ -109,10 +113,7 @@ function Profile() {
     }
   };
 
-  const openPopup = (type) => {
-    setPopup(type);
-  };
-
+  const openPopup = (type) => setPopup(type);
   const closePopup = () => setPopup(null);
 
   const handleReturnBook = (bookName) => {
@@ -171,12 +172,15 @@ function Profile() {
           </div>
         </div>
 
-        <button
-          className="absolute top-4 right-4 bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition-all duration-300"
-          onClick={handleEditClick}
-        >
-          ✏️ Edit
-        </button>
+        <div className="absolute top-4 right-4 text-right">
+          <button
+            className="bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition-all duration-300"
+            onClick={handleEditClick}
+          >
+            ✏️ Edit
+          </button>
+          <p className="text-gray-400 text-sm mt-1 capitalize">Role: {user?.role}</p>
+        </div>
 
         <div className="flex flex-col items-center mt-6 gap-4">
           {["Issued Books", "Returned Books", "Return Due", "Requested Books", "Transactions", "Late Fees"].map((label, index) => (

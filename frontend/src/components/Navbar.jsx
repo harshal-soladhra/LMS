@@ -93,7 +93,7 @@ return (
       <Link to="/" className="text-2xl font-bold">📚 LMS</Link>
 
       {/* Desktop Menu */}
-      <ul className="hidden md:flex space-x-6 text-lg">
+      <ul className="hidden md:flex space-x-6 text-lg gap-4 font-bold">
         {[
           { path: "/", label: "Home" },
           { path: "/books", label: "Books" },
