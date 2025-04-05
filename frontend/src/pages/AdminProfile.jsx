@@ -16,6 +16,26 @@ const dummyBookRequests = [
   { id: 2, userName: "Jane Smith", bookName: "The Alchemist", status: "pending" },
 ];
 
+const dummyReturnRequests = [
+  { id: 1, userName: "John Doe", bookName: "Dune", status: "pending", lateFee: 10 },
+  { id: 2, userName: "Jane Smith", bookName: "The Alchemist", status: "pending", lateFee: 5 },
+];
+
+const dummyReservations = [
+  { id: 1, userName: "John Doe", bookName: "1984", status: "pending" },
+  { id: 2, userName: "Jane Smith", bookName: "To Kill a Mockingbird", status: "pending" },
+];
+
+const dummyTransactions = [
+  { id: 1, userName: "John Doe", bookName: "Dune", status: "completed", lateFee: 10 },
+  { id: 2, userName: "Jane Smith", bookName: "The Alchemist", status: "completed", lateFee: 5 },
+];
+
+const dummyBooks = [
+  { id: 1, title: "Dune", author: "Frank Herbert", isbn: "978-0441172719" },
+  { id: 2, title: "The Alchemist", author: "Paulo Coelho", isbn: "978-0062315007" },
+];
+
 const AdminProfile = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
@@ -26,8 +46,35 @@ const AdminProfile = () => {
   const [usersPopup, setUsersPopup] = useState(false);
   const [manageBooksPopup, setManageBooksPopup] = useState(false);
   const [requestsPopup, setRequestsPopup] = useState(false);
+  const [returnRequestsPopup, setReturnRequestsPopup] = useState(false);
+  const [reservationsPopup, setReservationsPopup] = useState(false);
+  const [transactionPopup, setTransactionPopup] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
   const [bookRequests, setBookRequests] = useState([]);
+  const [returnRequests, setReturnRequests] = useState([]);
+  const [reservations, setReservations] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [commentPopup, setCommentPopup] = useState(null); // { id, action }
+  const [commentText, setCommentText] = useState("");
+  const [successPopup, setSuccessPopup] = useState(false);
+  const [books, setBooks] = useState(dummyBooks);
+  const [addBooksPopup, setAddBooksPopup] = useState(false);
+  const [isbnPopup, setIsbnPopup] = useState(false);
+  const [manualAddPopup, setManualAddPopup] = useState(false);
+  const [modifyBooksPopup, setModifyBooksPopup] = useState(false);
+  const [editBookPopup, setEditBookPopup] = useState(null); // { id, title, author, isbn, ... }
+  const [deleteBooksPopup, setDeleteBooksPopup] = useState(false);
+  const [isbnInput, setIsbnInput] = useState("");
+  const [manualBookData, setManualBookData] = useState({
+    coverImage: "",
+    title: "",
+    author: "",
+    publicationDate: "",
+    isbn: "",
+    addition: "",
+    language: "",
+    copies: ""
+  });
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -47,6 +94,9 @@ const AdminProfile = () => {
       setLoading(false);
       fetchAllUsers();
       fetchBookRequests();
+      fetchReturnRequests();
+      fetchReservations();
+      fetchTransactions();
     };
 
     fetchProfile();
@@ -69,6 +119,51 @@ const AdminProfile = () => {
       setBookRequests(requestsWithUsernames || dummyBookRequests);
     } else {
       setBookRequests(dummyBookRequests);
+    }
+  };
+
+  const fetchReturnRequests = async () => {
+    const { data, error } = await supabase.from("return_requests").select("id, user_id, book_name, status, late_fee");
+    if (!error) {
+      const requestsWithUsernames = await Promise.all(
+        data.map(async (request) => {
+          const { data: userData } = await supabase.from("users").select("name").eq("id", request.user_id).single();
+          return { ...request, userName: userData?.name || "Unknown", lateFee: request.late_fee || 0 };
+        })
+      );
+      setReturnRequests(requestsWithUsernames || dummyReturnRequests);
+    } else {
+      setReturnRequests(dummyReturnRequests);
+    }
+  };
+
+  const fetchReservations = async () => {
+    const { data, error } = await supabase.from("reservations").select("id, user_id, book_name, status");
+    if (!error) {
+      const reservationsWithUsernames = await Promise.all(
+        data.map(async (reservation) => {
+          const { data: userData } = await supabase.from("users").select("name").eq("id", reservation.user_id).single();
+          return { ...reservation, userName: userData?.name || "Unknown" };
+        })
+      );
+      setReservations(reservationsWithUsernames || dummyReservations);
+    } else {
+      setReservations(dummyReservations);
+    }
+  };
+
+  const fetchTransactions = async () => {
+    const { data, error } = await supabase.from("transactions").select("id, user_id, book_name, status, late_fee");
+    if (!error) {
+      const transactionsWithUsernames = await Promise.all(
+        data.map(async (transaction) => {
+          const { data: userData } = await supabase.from("users").select("name").eq("id", transaction.user_id).single();
+          return { ...transaction, userName: userData?.name || "Unknown", lateFee: transaction.late_fee || 0 };
+        })
+      );
+      setTransactions(transactionsWithUsernames || dummyTransactions);
+    } else {
+      setTransactions(dummyTransactions);
     }
   };
 
@@ -115,18 +210,57 @@ const AdminProfile = () => {
     }
   };
 
-  const handleAddBook = (bookName, author) => {
-    console.log(`Added book: ${bookName} by ${author}`);
+  const handleAddBookByIsbn = async () => {
+    if (!isbnInput) return;
+    const newBook = { id: Date.now(), title: `Book_${isbnInput}`, author: "Unknown", isbn: isbnInput };
+    setBooks([...books, newBook]);
+    setIsbnPopup(false);
+    setAddBooksPopup(false);
+    setManageBooksPopup(false);
+    setIsbnInput("");
+    setSuccessPopup("Book successfully added!");
+    setTimeout(() => navigate("/profile"), 1000);
   };
 
-  const handleApproveRequest = async (requestId) => {
-    const { error } = await supabase.from("book_requests").update({ status: "approved" }).eq("id", requestId);
-    if (!error) setBookRequests(bookRequests.map(req => req.id === requestId ? { ...req, status: "approved" } : req));
+  const handleManualAddSubmit = async () => {
+    const newBook = { id: Date.now(), ...manualBookData };
+    setBooks([...books, newBook]);
+    setManualAddPopup(false);
+    setAddBooksPopup(false);
+    setManageBooksPopup(false);
+    setManualBookData({
+      coverImage: "",
+      title: "",
+      author: "",
+      publicationDate: "",
+      isbn: "",
+      addition: "",
+      language: "",
+      copies: ""
+    });
+    setSuccessPopup("Book successfully added!");
+    setTimeout(() => navigate("/profile"), 1000);
   };
 
-  const handleRejectRequest = async (requestId) => {
-    const { error } = await supabase.from("book_requests").update({ status: "rejected" }).eq("id", requestId);
-    if (!error) setBookRequests(bookRequests.map(req => req.id === requestId ? { ...req, status: "rejected" } : req));
+  const handleEditBook = (book) => {
+    setEditBookPopup(book);
+  };
+
+  const handleModifyBookSubmit = async () => {
+    setBooks(books.map(book => book.id === editBookPopup.id ? { ...editBookPopup } : book));
+    setEditBookPopup(null);
+    setModifyBooksPopup(false);
+    setManageBooksPopup(false);
+    setSuccessPopup("Book successfully modified!");
+    setTimeout(() => navigate("/profile"), 1000);
+  };
+
+  const handleDeleteBook = (bookId) => {
+    setBooks(books.filter(book => book.id !== bookId));
+  };
+
+  const calculateTotalFee = () => {
+    return transactions.reduce((total, transaction) => total + (transaction.lateFee || 0), 0);
   };
 
   if (loading) return <p>Loading profile...</p>;
@@ -157,6 +291,9 @@ const AdminProfile = () => {
           <motion.button whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 255, 255, 0.6)" }} className="w-64 bg-blue-600 text-white px-5 py-3 rounded-lg text-lg font-semibold transition-all hover:bg-blue-700" onClick={() => setUsersPopup(true)}>View All Users</motion.button>
           <motion.button whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 255, 255, 0.6)" }} className="w-64 bg-blue-600 text-white px-5 py-3 rounded-lg text-lg font-semibold transition-all hover:bg-blue-700" onClick={() => setManageBooksPopup(true)}>Manage Books</motion.button>
           <motion.button whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 255, 255, 0.6)" }} className="w-64 bg-blue-600 text-white px-5 py-3 rounded-lg text-lg font-semibold transition-all hover:bg-blue-700" onClick={() => setRequestsPopup(true)}>Approve Book Requests</motion.button>
+          <motion.button whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 255, 255, 0.6)" }} className="w-64 bg-blue-600 text-white px-5 py-3 rounded-lg text-lg font-semibold transition-all hover:bg-blue-700" onClick={() => setReturnRequestsPopup(true)}>Approve Return Request</motion.button>
+          <motion.button whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 255, 255, 0.6)" }} className="w-64 bg-blue-600 text-white px-5 py-3 rounded-lg text-lg font-semibold transition-all hover:bg-blue-700" onClick={() => setReservationsPopup(true)}>Approve Reservation</motion.button>
+          <motion.button whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 255, 255, 0.6)" }} className="w-64 bg-blue-600 text-white px-5 py-3 rounded-lg text-lg font-semibold transition-all hover:bg-blue-700" onClick={() => setTransactionPopup(true)}>Transaction</motion.button>
         </div>
       </div>
 
@@ -204,18 +341,190 @@ const AdminProfile = () => {
             <motion.div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setManageBooksPopup(false)} />
             <motion.div className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-[600px] z-50" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
               <h3 className="text-lg font-semibold mb-4">Manage Books</h3>
-              <div className="space-y-4">
-                <div className="flex flex-col gap-2">
-                  <input type="text" placeholder="Book Name" className="p-2 border rounded-lg bg-gray-700 text-white" id="newBookName" />
-                  <input type="text" placeholder="Author" className="p-2 border rounded-lg bg-gray-700 text-white" id="newBookAuthor" />
-                  <button className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all" onClick={() => {
-                    const bookName = document.getElementById("newBookName").value;
-                    const author = document.getElementById("newBookAuthor").value;
-                    if (bookName && author) handleAddBook(bookName, author);
-                  }}>Add Book</button>
-                </div>
+              <div className="flex justify-between gap-4">
+                <motion.button
+                  whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 255, 255, 0.6)" }}
+                  className="flex-1 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all"
+                  onClick={() => setAddBooksPopup(true)}
+                >
+                  Add Books
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 255, 255, 0.6)" }}
+                  className="flex-1 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-all"
+                  onClick={() => setModifyBooksPopup(true)}
+                >
+                  Modify Books
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 255, 255, 0.6)" }}
+                  className="flex-1 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all"
+                  onClick={() => setDeleteBooksPopup(true)}
+                >
+                  Delete Books
+                </motion.button>
               </div>
               <button className="mt-4 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all w-full" onClick={() => setManageBooksPopup(false)}>Close</button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {addBooksPopup && (
+          <>
+            <motion.div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setAddBooksPopup(false)} />
+            <motion.div className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-96 z-60" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
+              <h3 className="text-lg font-semibold mb-4">Add Books</h3>
+              <div className="flex flex-col gap-4">
+                <motion.button
+                  whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 255, 255, 0.6)" }}
+                  className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-all"
+                  onClick={() => setIsbnPopup(true)}
+                >
+                  By ISBN Number
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 255, 255, 0.6)" }}
+                  className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-all"
+                  onClick={() => setManualAddPopup(true)}
+                >
+                  By Manual Add
+                </motion.button>
+              </div>
+              <button className="mt-4 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all w-full" onClick={() => setAddBooksPopup(false)}>Close</button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isbnPopup && (
+          <>
+            <motion.div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-70" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsbnPopup(false)} />
+            <motion.div className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-96 z-70" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
+              <h3 className="text-lg font-semibold mb-4">Add Book by ISBN</h3>
+              <input
+                type="text"
+                value={isbnInput}
+                onChange={(e) => setIsbnInput(e.target.value)}
+                placeholder="Enter ISBN Number"
+                className="w-full p-2 border rounded-lg bg-gray-700 text-white mb-4"
+              />
+              <div className="flex justify-end gap-2">
+                <button className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-all" onClick={() => setIsbnPopup(false)}>Cancel</button>
+                <button className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all" onClick={handleAddBookByIsbn}>Add</button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {manualAddPopup && (
+          <>
+            <motion.div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-70" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setManualAddPopup(false)} />
+            <motion.div className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-96 z-70" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
+              <h3 className="text-lg font-semibold mb-4">Manually Add Book</h3>
+              <div className="space-y-3">
+                <input type="file" accept="image/*" onChange={(e) => setManualBookData({ ...manualBookData, coverImage: URL.createObjectURL(e.target.files[0]) })} className="w-full p-2 border rounded-lg bg-gray-700 text-white" />
+                <input type="text" value={manualBookData.title} onChange={(e) => setManualBookData({ ...manualBookData, title: e.target.value })} placeholder="Title" className="w-full p-2 border rounded-lg bg-gray-700 text-white" />
+                <input type="text" value={manualBookData.author} onChange={(e) => setManualBookData({ ...manualBookData, author: e.target.value })} placeholder="Author Name" className="w-full p-2 border rounded-lg bg-gray-700 text-white" />
+                <input type="date" value={manualBookData.publicationDate} onChange={(e) => setManualBookData({ ...manualBookData, publicationDate: e.target.value })} className="w-full p-2 border rounded-lg bg-gray-700 text-white" />
+                <input type="text" value={manualBookData.isbn} onChange={(e) => setManualBookData({ ...manualBookData, isbn: e.target.value })} placeholder="ISBN Number (Optional)" className="w-full p-2 border rounded-lg bg-gray-700 text-white" />
+                <input type="text" value={manualBookData.addition} onChange={(e) => setManualBookData({ ...manualBookData, addition: e.target.value })} placeholder="Addition" className="w-full p-2 border rounded-lg bg-gray-700 text-white" />
+                <input type="text" value={manualBookData.language} onChange={(e) => setManualBookData({ ...manualBookData, language: e.target.value })} placeholder="Language" className="w-full p-2 border rounded-lg bg-gray-700 text-white" />
+                <input type="number" value={manualBookData.copies} onChange={(e) => setManualBookData({ ...manualBookData, copies: e.target.value })} placeholder="Copies" className="w-full p-2 border rounded-lg bg-gray-700 text-white" />
+              </div>
+              <div className="flex justify-end mt-4 gap-2">
+                <button className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-all" onClick={() => setManualAddPopup(false)}>Cancel</button>
+                <button className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all" onClick={handleManualAddSubmit}>Add</button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {modifyBooksPopup && (
+          <>
+            <motion.div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setModifyBooksPopup(false)} />
+            <motion.div className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-[600px] z-60" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
+              <h3 className="text-lg font-semibold mb-4">Modify Books</h3>
+              <div className="space-y-4">
+                <div className="flex justify-between p-3 bg-blue-600 rounded-lg font-semibold">
+                  <span className="w-1/4">Book Name</span>
+                  <span className="w-1/4 text-center">Author Name</span>
+                  <span className="w-1/4 text-center">ISBN Number</span>
+                  <span className="w-1/4 text-right">Action</span>
+                </div>
+                {books.length > 0 ? books.map((book, index) => (
+                  <motion.div key={index} className="flex justify-between p-3 bg-gray-700 rounded-lg" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
+                    <span className="w-1/4">{book.title}</span>
+                    <span className="w-1/4 text-center">{book.author}</span>
+                    <span className="w-1/4 text-center">{book.isbn}</span>
+                    <span className="w-1/4 text-right">
+                      <button className="bg-blue-500 text-white px-2 py-1 rounded-lg hover:bg-blue-600 transition-all" onClick={() => handleEditBook(book)}>Edit</button>
+                    </span>
+                  </motion.div>
+                )) : <p className="text-gray-400">No books found</p>}
+              </div>
+              <button className="mt-4 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all w-full" onClick={() => setModifyBooksPopup(false)}>Close</button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editBookPopup && (
+          <>
+            <motion.div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-70" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setEditBookPopup(null)} />
+            <motion.div className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-96 z-70" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
+              <h3 className="text-lg font-semibold mb-4">Edit Book</h3>
+              <div className="space-y-3">
+                <input type="file" accept="image/*" onChange={(e) => setEditBookPopup({ ...editBookPopup, coverImage: URL.createObjectURL(e.target.files[0]) })} className="w-full p-2 border rounded-lg bg-gray-700 text-white" />
+                <input type="text" value={editBookPopup.title} onChange={(e) => setEditBookPopup({ ...editBookPopup, title: e.target.value })} placeholder="Title" className="w-full p-2 border rounded-lg bg-gray-700 text-white" />
+                <input type="text" value={editBookPopup.author} onChange={(e) => setEditBookPopup({ ...editBookPopup, author: e.target.value })} placeholder="Author Name" className="w-full p-2 border rounded-lg bg-gray-700 text-white" />
+                <input type="date" value={editBookPopup.publicationDate || ""} onChange={(e) => setEditBookPopup({ ...editBookPopup, publicationDate: e.target.value })} className="w-full p-2 border rounded-lg bg-gray-700 text-white" />
+                <input type="text" value={editBookPopup.isbn} onChange={(e) => setEditBookPopup({ ...editBookPopup, isbn: e.target.value })} placeholder="ISBN Number (Optional)" className="w-full p-2 border rounded-lg bg-gray-700 text-white" />
+                <input type="text" value={editBookPopup.addition || ""} onChange={(e) => setEditBookPopup({ ...editBookPopup, addition: e.target.value })} placeholder="Addition" className="w-full p-2 border rounded-lg bg-gray-700 text-white" />
+                <input type="text" value={editBookPopup.language || ""} onChange={(e) => setEditBookPopup({ ...editBookPopup, language: e.target.value })} placeholder="Language" className="w-full p-2 border rounded-lg bg-gray-700 text-white" />
+                <input type="number" value={editBookPopup.copies || ""} onChange={(e) => setEditBookPopup({ ...editBookPopup, copies: e.target.value })} placeholder="Copies" className="w-full p-2 border rounded-lg bg-gray-700 text-white" />
+              </div>
+              <div className="flex justify-end mt-4 gap-2">
+                <button className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-all" onClick={() => setEditBookPopup(null)}>Cancel</button>
+                <button className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-all" onClick={handleModifyBookSubmit}>Modify</button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {deleteBooksPopup && (
+          <>
+            <motion.div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDeleteBooksPopup(false)} />
+            <motion.div className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-[600px] z-60" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
+              <h3 className="text-lg font-semibold mb-4">Delete Books</h3>
+              <div className="space-y-4">
+                <div className="flex justify-between p-3 bg-blue-600 rounded-lg font-semibold">
+                  <span className="w-1/4">Book Name</span>
+                  <span className="w-1/4 text-center">Author Name</span>
+                  <span className="w-1/4 text-center">ISBN Number</span>
+                  <span className="w-1/4 text-right">Action</span>
+                </div>
+                {books.length > 0 ? books.map((book, index) => (
+                  <motion.div key={index} className="flex justify-between p-3 bg-gray-700 rounded-lg" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
+                    <span className="w-1/4">{book.title}</span>
+                    <span className="w-1/4 text-center">{book.author}</span>
+                    <span className="w-1/4 text-center">{book.isbn}</span>
+                    <span className="w-1/4 text-right">
+                      <button className="bg-red-500 text-white px-2 py-1 rounded-lg hover:bg-red-600 transition-all" onClick={() => handleDeleteBook(book.id)}>Delete</button>
+                    </span>
+                  </motion.div>
+                )) : <p className="text-gray-400">No books found</p>}
+              </div>
+              <button className="mt-4 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all w-full" onClick={() => setDeleteBooksPopup(false)}>Close</button>
             </motion.div>
           </>
         )}
@@ -244,6 +553,136 @@ const AdminProfile = () => {
                 )) : <p className="text-gray-400">No requests found</p>}
               </div>
               <button className="mt-4 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all w-full" onClick={() => setRequestsPopup(false)}>Close</button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {returnRequestsPopup && (
+          <>
+            <motion.div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setReturnRequestsPopup(false)} />
+            <motion.div className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-[600px] z-50" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
+              <h3 className="text-lg font-semibold mb-4">Approve Return Requests</h3>
+              <div className="space-y-4">
+                <div className="flex justify-between p-3 bg-blue-600 rounded-lg font-semibold">
+                  <span className="w-1/5">User</span><span className="w-1/5 text-center">Book Name</span><span className="w-1/5 text-center">Status</span><span className="w-1/5 text-center">Late Fee</span><span className="w-1/5 text-right">Action</span>
+                </div>
+                {returnRequests.length > 0 ? returnRequests.map((request, index) => (
+                  <motion.div key={index} className="flex justify-between p-3 bg-gray-700 rounded-lg" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
+                    <span className="w-1/5">{request.userName}</span><span className="w-1/5 text-center">{request.bookName}</span><span className="w-1/5 text-center capitalize">{request.status}</span><span className="w-1/5 text-center">${request.lateFee}</span>
+                    <span className="w-1/5 text-right flex gap-2 justify-end">
+                      {request.status === "pending" && (
+                        <>
+                          <button className="bg-green-500 text-white px-2 py-1 rounded-lg hover:bg-green-600 transition-all" onClick={() => handleApproveReturn(request.id)}>Approve</button>
+                          <button className="bg-red-500 text-white px-2 py-1 rounded-lg hover:bg-red-600 transition-all" onClick={() => handleRejectReturn(request.id)}>Reject</button>
+                        </>
+                      )}
+                    </span>
+                  </motion.div>
+                )) : <p className="text-gray-400">No return requests found</p>}
+              </div>
+              <button className="mt-4 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all w-full" onClick={() => setReturnRequestsPopup(false)}>Close</button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {reservationsPopup && (
+          <>
+            <motion.div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setReservationsPopup(false)} />
+            <motion.div className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-[600px] z-50" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
+              <h3 className="text-lg font-semibold mb-4">Approve Reservations</h3>
+              <div className="space-y-4">
+                <div className="flex justify-between p-3 bg-blue-600 rounded-lg font-semibold">
+                  <span className="w-1/4">User</span><span className="w-1/4 text-center">Book Name</span><span className="w-1/4 text-center">Status</span><span className="w-1/4 text-right">Action</span>
+                </div>
+                {reservations.length > 0 ? reservations.map((reservation, index) => (
+                  <motion.div key={index} className="flex justify-between p-3 bg-gray-700 rounded-lg" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
+                    <span className="w-1/4">{reservation.userName}</span><span className="w-1/4 text-center">{reservation.bookName}</span><span className="w-1/4 text-center capitalize">{reservation.status}</span>
+                    <span className="w-1/4 text-right flex gap-2 justify-end">
+                      {reservation.status === "pending" && (
+                        <>
+                          <button className="bg-green-500 text-white px-2 py-1 rounded-lg hover:bg-green-600 transition-all" onClick={() => handleApproveReservation(reservation.id)}>Approve</button>
+                          <button className="bg-red-500 text-white px-2 py-1 rounded-lg hover:bg-red-600 transition-all" onClick={() => handleRejectReservation(reservation.id)}>Reject</button>
+                        </>
+                      )}
+                    </span>
+                  </motion.div>
+                )) : <p className="text-gray-400">No reservations found</p>}
+              </div>
+              <button className="mt-4 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all w-full" onClick={() => setReservationsPopup(false)}>Close</button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {transactionPopup && (
+          <>
+            <motion.div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setTransactionPopup(false)} />
+            <motion.div className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-[600px] z-50" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
+              <h3 className="text-lg font-semibold mb-4">Transactions</h3>
+              <div className="space-y-4">
+                <div className="flex justify-between p-3 bg-blue-600 rounded-lg font-semibold">
+                  <span className="w-1/5">User</span>
+                  <span className="w-1/5 text-center">Book Name</span>
+                  <span className="w-1/5 text-center">Status</span>
+                  <span className="w-1/5 text-center">Late Fee</span>
+                  <span className="w-1/5 text-center">Total Fee</span>
+                </div>
+                {transactions.length > 0 ? transactions.map((transaction, index) => (
+                  <motion.div key={index} className="flex justify-between p-3 bg-gray-700 rounded-lg" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
+                    <span className="w-1/5">{transaction.userName}</span>
+                    <span className="w-1/5 text-center">{transaction.bookName}</span>
+                    <span className="w-1/5 text-center capitalize">{transaction.status}</span>
+                    <span className="w-1/5 text-center">${transaction.lateFee}</span>
+                    <span className="w-1/5 text-center">${transaction.lateFee}</span>
+                  </motion.div>
+                )) : <p className="text-gray-400">No transactions found</p>}
+                {transactions.length > 0 && (
+                  <div className="mt-4 p-3 bg-gray-700 rounded-lg text-right">
+                    <span className="font-semibold">Total Fee Collected: </span>
+                    <span>${calculateTotalFee()}</span>
+                  </div>
+                )}
+              </div>
+              <button className="mt-4 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all w-full" onClick={() => setTransactionPopup(false)}>Close</button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {commentPopup && (
+          <>
+            <motion.div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCommentPopup(null)} />
+            <motion.div className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-96 z-50" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
+              <h3 className="text-lg font-semibold mb-4">Add Comment</h3>
+              <textarea
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="Write your comment here..."
+                className="w-full p-2 border rounded-lg bg-gray-700 text-white h-32 resize-none"
+              />
+              <div className="flex justify-end mt-4">
+                <button className="bg-gray-500 text-white px-4 py-2 rounded-lg mr-2 hover:bg-gray-600 transition-all" onClick={() => setCommentPopup(null)}>Cancel</button>
+                <button className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-all" onClick={handleCommentSubmit}>Done</button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {successPopup && (
+          <>
+            <motion.div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSuccessPopup(false)} />
+            <motion.div className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-96 z-50" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
+              <h3 className="text-lg font-semibold mb-4">Success</h3>
+              <p className="mb-4">{successPopup}</p>
+              <button className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all w-full" onClick={() => setSuccessPopup(false)}>Close</button>
             </motion.div>
           </>
         )}
