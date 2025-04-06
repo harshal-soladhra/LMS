@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../supabaseClient";
+import BookRequestModal from "../components/BookRequestModal";
 
 function Profile() {
   const navigate = useNavigate();
@@ -13,52 +14,55 @@ function Profile() {
   const [popup, setPopup] = useState(null);
   const [lateFeesPopup, setLateFeesPopup] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [booksData, setBooksData] = useState(
-    {
-      issuedbooks: [],
-      returnedbooks: [],
-      returndue: [],
-    }
-  );
-  
+  const [booksData, setBooksData] = useState({
+    issuedbooks: [],
+    returnedbooks: [],
+    returndue: [],
+    transactions: [],
+    requestedbooks: [], // ✅ add this
+  });
+
   useEffect(() => {
     const fetchProfile = async () => {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !sessionData.session) return navigate("/signin", { replace: true });
-      
+
       const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("id, name, email, profile_picture, role")
-      .eq("id", sessionData.session.user.id)
-      .single();
-      
+        .from("users")
+        .select("id, name, email, profile_picture, role")
+        .eq("id", sessionData.session.user.id)
+        .single();
+
       if (userError) return navigate("/signin", { replace: true });
-      
+
       setUser(userData);
       setUserPhoto(userData.profile_picture || "https://via.placeholder.com/150");
       const fetchBooksData = async (userId) => {
         try {
-          const { data: issuedBooks, error: issuedError } = await supabase
+          const { data: issuedBooks, issuedError } = await supabase
             .from("books")
             .select("*")
             .eq("issued_to", userId)
-            // .eq("return_date","");
-    
-          const { data: returnedBooks, error: returnedError } = await supabase
+            .is("returned_date", null); // not returned yet
+
+          const { data: returnedBooks, returnedError } = await supabase
             .from("books")
             .select("*")
-            .eq("issued_to", userId);
-    
-          const { data: returnDueBooks, error: dueError } = await supabase
+            .eq("issued_to", userId)
+            .not("returned_date", "is", null); // already returned
+
+          const { data: returnDueBooks, dueError } = await supabase
             .from("books")
             .select("*")
-            .eq("issued_to", userId);
-    
+            .eq("issued_to", userId)
+            .lte("due_date", new Date().toISOString()) // overdue
+            .is("returned_date", null); // not returned yet
+
           if (issuedError || returnedError || dueError) {
             console.error("Error fetching books data:", issuedError || returnedError || dueError);
             return;
           }
-    
+
           setBooksData({
             issuedbooks: issuedBooks || [],
             returnedbooks: returnedBooks || [],
@@ -67,20 +71,41 @@ function Profile() {
         } catch (err) {
           console.error("Unexpected error:", err);
         }
-        if (!booksData) return <p>Loading book data...</p>;
+
       };
       await fetchBooksData(userData.id);
       setLoading(false);
+      const { data: transactionsData, error: transactionsError } = await supabase
+        .from("transactions")
+        .select("*, books(title, author)")
+        .eq("user_id", userData.id)
+        .order("action_date", { ascending: false });
+
+      if (transactionsError) {
+        console.error("Error fetching transactions:", transactionsError);
+      } else {
+        setBooksData(prev => ({ ...prev, transactions: transactionsData || [] }));
+      }
+      const { data: requestedBooks, error: requestedBooksError } = await supabase
+        .from("book_requests") // or whatever your table name is
+        .select("*")
+        .eq("user_id", userData.id);
+
+      if (requestedBooksError) {
+        console.error("Error fetching requested books:", requestedBooksError);
+      } else {
+        setBooksData(prev => ({ ...prev, requestedbooks: requestedBooks || [] }));
+      }
 
       // Redirect to AdminProfile if role is admin
       if (userData.role === "admin") {
         navigate("/adminprofile", { replace: true });
       }
     };
-  
+
     fetchProfile();
   }, [navigate]);
-  
+
 
   const handleEditClick = () => {
     setEditData({ name: user?.name, email: user?.email, password: "" });
@@ -90,8 +115,13 @@ function Profile() {
   const handleSaveChanges = async () => {
     const { name, email, password } = editData;
     const updates = { name, email };
-    if (password) updates.password = password;
-
+    if (password) {
+      const { error: pwError } = await supabase.auth.updateUser({ password });
+      if (pwError) {
+        console.error("Password update failed:", pwError.message);
+        return;
+      }
+    }
     const { error } = await supabase.from("users").update(updates).eq("id", user.id);
     if (!error) {
       setUser({ ...user, name, email });
@@ -102,41 +132,73 @@ function Profile() {
   const handlePhotoChange = async (e) => {
     const file = e.target.files[0];
     if (!file || !user) return;
-
     const filePath = `user_${user.id}/profile_pictures/${file.name}_${Date.now()}`;
     if (user.profile_picture) {
       const oldFilePath = user.profile_picture.split("/").slice(-2).join("/");
       await supabase.storage.from("profile-pictures").remove([oldFilePath]);
     }
-
     const { error: uploadError } = await supabase.storage
       .from("profile-pictures")
       .upload(filePath, file, { cacheControl: "3600", upsert: true });
-
     if (uploadError) {
       console.error("Upload Error:", uploadError.message);
       return;
     }
-
     const { data: publicUrlData } = supabase.storage.from("profile-pictures").getPublicUrl(filePath);
     const imageUrl = publicUrlData.publicUrl;
-
     const { error: updateError } = await supabase
       .from("users")
       .update({ profile_picture: imageUrl })
       .eq("id", user.id);
-
     if (!updateError) {
       setUserPhoto(imageUrl);
       setUser({ ...user, profile_picture: imageUrl });
+      alert("Profile picture updated successfully!");
     }
   };
 
   const openPopup = (type) => setPopup(type);
   const closePopup = () => setPopup(null);
 
-  const handleReturnBook = (bookName) => {
-    console.log(`Returning book: ${bookName}`);
+  const handleReturnBook = async (bookId) => {
+    // Fetch the book to get current copies
+    const { data: book, error: fetchError } = await supabase
+      .from("books")
+      .select("copies, lateFees")
+      .eq("id", bookId)
+      .single();
+
+    if (fetchError) {
+      console.error("Failed to fetch book:", fetchError.message);
+      return;
+    }
+
+    const { error: updateError } = await supabase
+      .from("books")
+      .update({
+        returned_date: new Date().toISOString(),
+        copies: book.copies + 1,
+      })
+      .eq("id", bookId);
+
+    if (updateError) {
+      console.error("Failed to return book:", updateError.message);
+      return;
+    }
+
+    await supabase.from("transactions").insert([
+      {
+        user_id: user.id,
+        book_id: bookId,
+        type: "return",
+        amount: book.lateFees || 0,
+        timestamp: new Date().toISOString(),
+        notes: "Returned with late fees"
+      }
+    ]);
+
+    // Refresh data
+    window.location.reload(); // or call fetchProfile() if you move it out
   };
 
   const calculateTotalFees = (type) => {
@@ -162,6 +224,7 @@ function Profile() {
   };
 
   if (loading) return <p>Loading profile...</p>;
+  if (!booksData) return <p>Loading book data...</p>;
 
   return (
     <div className="min-h-screen w-full bg-gray-900 flex justify-center items-center p-6">
@@ -188,17 +251,18 @@ function Profile() {
           <div>
             <h2 className="text-2xl font-semibold text-white">{user?.name}</h2>
             <p className="text-gray-300">{user?.email}</p>
+            <p className="text-gray-400 text-sm mt-1 capitalize">{user?.role}</p>
           </div>
         </div>
 
-        <div className="absolute top-4 right-4 text-right">
+        <div className="absolute top-25 right-7 text-right">
           <button
             className="bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition-all duration-300"
             onClick={handleEditClick}
           >
             ✏️ Edit
           </button>
-          <p className="text-gray-400 text-sm mt-1 capitalize">Role: {user?.role}</p>
+
         </div>
 
         <div className="flex flex-col items-center mt-6 gap-4">
@@ -212,6 +276,10 @@ function Profile() {
                 if (label === "Returned Books") openPopup("returnedbooks");
                 if (label === "Return Due") openPopup("returndue");
                 if (label === "Late Fees" && totalLateFees > 0) setLateFeesPopup(true);
+                if (label === "Transactions") openPopup("transactions");
+                // if (label === "Requested Books") navigate("/book-request", { replace: true });
+                if (label === "Requested Books") openPopup("requestedbooks");
+
               }}
               disabled={label === "Late Fees" && totalLateFees === 0}
             >
@@ -330,7 +398,7 @@ function Profile() {
                         <span className="w-1/6 text-right">
                           <button
                             className="bg-green-500 text-white px-2 py-1 rounded-lg hover:bg-green-600 transition-all"
-                            onClick={() => handleReturnBook(book.bookName)}
+                            onClick={() => handleReturnBook(book_id)}
                           >
                             Return
                           </button>
@@ -341,9 +409,35 @@ function Profile() {
                 ) : (
                   <p className="text-gray-400">No data available</p>
                 )}
-                {(popup === "returnedbooks" || popup === "returndue") && (
-                  <div className="flex justify-end p-3 bg-gray-700 rounded-lg">
-                    <span className="font-semibold">Total Fees: ${calculateTotalFees(popup)}</span>
+                {popup === "requestedbooks" && (
+                  <BookRequestModal setShowModal={() => setPopup(null)} />
+                )}
+                {popup === "transactions" && (
+                  <div className="space-y-4">
+                    <div className="flex justify-between p-3 bg-blue-600 rounded-lg font-semibold">
+                      <span className="w-1/3">Book</span>
+                      <span className="w-1/4 text-center">Type</span>
+                      <span className="w-1/4 text-right">Amount</span>
+                      <span className="w-1/4 text-right">Date</span>
+                    </div>
+                    {booksData.transactions.length > 0 ? (
+                      booksData.transactions.map((txn, index) => (
+                        <motion.div
+                          key={txn.id || index}
+                          className="flex justify-between p-3 bg-gray-700 rounded-lg"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                        >
+                          <span className="w-1/3">{txn.books?.title || "N/A"}</span>
+                          <span className="w-1/4 text-center capitalize">{txn.type}</span>
+                          <span className="w-1/4 text-right">${txn.amount || 0}</span>
+                          <span className="w-1/4 text-right">{new Date(txn.timestamp).toLocaleDateString()}</span>
+                        </motion.div>
+                      ))
+                    ) : (
+                      <p className="text-gray-400">No transactions found</p>
+                    )}
                   </div>
                 )}
               </div>

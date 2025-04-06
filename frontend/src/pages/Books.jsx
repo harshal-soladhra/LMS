@@ -36,6 +36,7 @@ const Books = () => {
       if (booksError) {
         console.error("🔥 Error fetching books:", booksError.message);
       } else {
+        console.log("📚 Books fetched successfully:", booksData);
         setBooks(booksData);
       }
       setLoading(false);

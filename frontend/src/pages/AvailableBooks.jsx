@@ -41,8 +41,10 @@ const AvailableBooks = () => {
 
   // ✅ Handle Book Issue
   const handleIssueBook = async (bookId, copies) => {
-    const token = localStorage.getItem("token");
-    if (!token) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      console.error("🔥 Error fetching user:", userError?.message || "No user found");
+      alert("You must be logged in to issue a book.");
       navigate("/SignIn");
       return;
     }
@@ -52,28 +54,27 @@ const AvailableBooks = () => {
       return;
     }
 
-    try {
-      const userId = "your-user-id"; // Replace with logged-in user ID
-      const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + 14); // 14 days from today
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 14);
 
+    try {
       const { error } = await supabase
         .from("books")
         .update({
-          issued_to: userId,
-          issued_date: new Date(),
-          due_date: dueDate,
-          copies: copies - 1, // ✅ Reduce available copies
+          issued_to: user.id,
+          issued_date: new Date().toISOString(),
+          due_date: dueDate.toISOString(),
+          copies: copies - 1,
         })
         .eq("id", bookId);
-      // ✅ Add a notification for the user
+
+      if (error) throw error;
       await supabase.from("notifications").insert([
         {
-          user_id: userData.id,
+          user_id: user.id,
           message: `You have successfully issued the book! Due date: ${dueDate.toDateString()}`,
         },
       ]);
-      if (error) throw error;
       alert("Book issued successfully!");
       window.location.reload();
     } catch (err) {
@@ -162,10 +163,82 @@ const AvailableBooks = () => {
                     >
                       {book.copies > 0 ? "Issue Book" : "Unavailable"}
                     </button>
-
-                    <button onClick={() => setSelectedBook(book)} className="mt-2 ml-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">
+                    <button
+                      className="mt-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                      onClick={() => setSelectedBook(book)}
+                    >
                       View Details
                     </button>
+                    <AnimatePresence>
+                      {selectedBook && (
+                        <motion.div
+                          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.2 }} // Faster animation
+                        >
+                          <motion.div
+                            className="bg-white p-4 rounded-lg shadow-lg max-w-4xl w-full flex flex-col md:flex-row gap-4"
+                            initial={{ scale: 0.9, y: 50 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 50 }}
+                            transition={{ duration: 0.2 }} // Faster animation
+                          >
+                            {/* Book Cover (Left Side) */}
+                            <div className="w-full md:w-1/3">
+                              {selectedBook.coverImage ? (
+                                <img
+                                  src={selectedBook.coverImage}
+                                  alt={selectedBook.title}
+                                  className="w-full h-64 object-cover rounded"
+                                />
+                              ) : (
+                                <div className="w-full h-64 bg-gray-200 flex items-center justify-center rounded">
+                                  No Cover Available
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Book Details (Right Side) */}
+                            <div className="w-full md:w-2/3">
+                              <h2 className="text-xl font-bold mb-2">{selectedBook.title}</h2>
+                              <p className="text-gray-600 mb-2">
+                                <strong>Authors:</strong> {selectedBook.author}
+                              </p>
+                              <div className="flex items-center mb-2">
+                                <span className="text-yellow-500">★★★★★</span>
+                                <span className="ml-2 text-gray-600">115 reviews</span>
+                              </div>
+                              <p className="text-gray-600 mb-2">
+                                <strong>First Published:</strong> {selectedBook.firstPublishYear}
+                              </p>
+                              <p className="text-gray-600 mb-2">
+                                <strong>Number of Pages:</strong> {selectedBook.numberOfPages}
+                              </p>
+                              <p className="text-gray-600 mb-2">
+                                <strong>Subjects:</strong> {selectedBook.subjects}
+                              </p>
+                              <p className="text-gray-600 mb-4">
+                                Grimm's Complete Fairy Tales collects more than 200 tales set down by Jacob and Wilhelm Grimm in the early decades of the nineteenth century, among them some of the best-loved and most famous fairy tales in all literature: "Little Red Riding Hood," "Snow-White and the Seven Dwarfs," "Cinderella," "Sleeping Beauty," "Rapunzel," "Rumpelstiltskin," and "Tom Thumb." Voluminous and exhaustive, this collection ranges from the familiar to the obscure. First published in 1812-1815, the Brothers Grimm made a career of preserving and retelling these oral stories that in turn inspired generations of storytelling, both written and oral.
+                              </p>
+                              <button
+                                className="mt-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                                onClick={() => setSelectedBook(null)}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+                                onClick={() => setSelectedBook(null)}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </motion.div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </motion.div>
                 ))}
               </div>
