@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../supabaseClient";
 
-
 function Profile() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
@@ -304,7 +303,7 @@ function Profile() {
               <h3 className="text-lg font-semibold mb-4 capitalize">
                 {popup === "issuedbooks" ? "Issued Books" : popup === "returnedbooks" ? "Returned Books" : "Return Due"}
               </h3>
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-[400px] overflow-y-auto">
                 <div className="flex justify-between p-3 bg-blue-600 rounded-lg font-semibold">
                   <span className="w-1/3">Book Name</span>
                   <span className="w-1/3 text-center">Author Name</span>
@@ -379,7 +378,7 @@ function Profile() {
               <p className="mb-4">Total Late Fees: ${totalLateFees}</p>
               <div className="flex justify-between">
                 <button
-                  className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all"
+                  className="bg-green-5 00 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all"
                   onClick={handlePayNow}
                 >
                   Pay Now
