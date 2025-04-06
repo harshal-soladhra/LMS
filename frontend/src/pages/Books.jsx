@@ -137,8 +137,20 @@ const Books = () => {
           message: `You have successfully issued the book! Due date: ${dueDate.toDateString()}`,
         },
       ]);
+      await supabase.from("issued_books").insert([
+          {
+            user_id: user.id,
+            book_id: bookId,
+          },
+        ]);
+      
+        if (error) {
+          console.error("Issue failed:", error.message);
+          alert("Failed to issue book.");
+        } else {
+          alert("Book issued successfully!");
+        };
       alert("Book issued successfully!");
-      window.location.reload();
     } catch (err) {
       console.error("🔥 Book Issue Error:", err);
       alert("Failed to issue book.");
