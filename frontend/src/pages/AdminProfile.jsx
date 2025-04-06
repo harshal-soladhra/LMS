@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../supabaseClient";
-
+import { addBook } from "../api";
 // Dummy data for admin features
 const dummyUsers = [
   { id: 1, name: "John Doe", email: "john@example.com", role: "member" },
@@ -39,7 +39,8 @@ const dummyBooks = [
 const AdminProfile = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [isbn, setIsbn] = useState("");
   const [userPhoto, setUserPhoto] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({ name: "", email: "", password: "" });
@@ -75,6 +76,8 @@ const AdminProfile = () => {
     language: "",
     copies: ""
   });
+
+
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -138,7 +141,7 @@ const AdminProfile = () => {
   };
 
   const fetchReservations = async () => {
-    const { data, error } = await supabase.from("reservations").select("id, user_id, book_name, status");
+    const { data, error } = await supabase.from("reservations").select("id, user_id, book_id, status");
     if (!error) {
       const reservationsWithUsernames = await Promise.all(
         data.map(async (reservation) => {
@@ -210,6 +213,41 @@ const AdminProfile = () => {
     }
   };
 
+  const handleAddBook = async () => {
+    if (!isbn) {
+      alert("Please enter an ISBN number.");
+      return;
+    }
+
+    setLoading(true);
+    const response = await addBook(isbn);
+    setLoading(false);
+
+    alert(response.message);
+    if (response.success) {
+      navigate("/profile");
+    }
+  };
+  const handlemanualsubmit = async () => {
+    if (!manualBookData.title || !manualBookData.author || !manualBookData.publicationDate || !manualBookData.copies) {
+      alert("Please fill in all required fields.");
+      return;
+    }
+    const book = {
+      title: manualBookData.title || "Unknown",
+      author: manualBookData.authors ? manualBookData.authors.join(", ") : "Unknown",
+      isbn: isbn,
+      genre: manualBookData.categories ? manualBookData.categories[0] : "Unknown",
+      language: manualBookData.language || "Unknown",
+      edition: manualBookData.publicationDate || "Unknown",
+      copies: manualBookData.copies || 1 // Default to 1 copy
+    };
+    const { data, error } = await supabase.from("books").insert([book]);
+    if (error) throw error;
+    setSuccessPopup("Book successfully added!");
+    setTimeout(() => navigate("/profile"), 1000);
+  };
+
   const handleAddBookByIsbn = async () => {
     if (!isbnInput) return;
     const newBook = { id: Date.now(), title: `Book_${isbnInput}`, author: "Unknown", isbn: isbnInput };
@@ -223,21 +261,26 @@ const AdminProfile = () => {
   };
 
   const handleManualAddSubmit = async () => {
-    const newBook = { id: Date.now(), ...manualBookData };
-    setBooks([...books, newBook]);
-    setManualAddPopup(false);
-    setAddBooksPopup(false);
-    setManageBooksPopup(false);
-    setManualBookData({
-      coverImage: "",
-      title: "",
-      author: "",
-      publicationDate: "",
-      isbn: "",
-      addition: "",
-      language: "",
-      copies: ""
-    });
+    if (!manualBookData.title || !manualBookData.author || !manualBookData.publicationDate || !manualBookData.copies) {
+      alert("Please fill in all required fields.");
+      return;
+    }
+    // setManualAddPopup(false);
+    // setAddBooksPopup(false);
+    // setManageBooksPopup(false);
+    console.log(manualBookData)
+    const book = {
+      title: manualBookData.title || "Unknown",
+      author: manualBookData.author ? manualBookData.author.join(", ") : "Unknown",
+      isbn: manualBookData.isbn || "",
+      cover_url: manualBookData.coverImage || "",
+      genre: manualBookData.categories ? manualBookData.categories[0] : "Unknown",
+      language: manualBookData.language || "Unknown",
+      edition: manualBookData.publicationDate || "Unknown",
+      copies: manualBookData.copies || 1 // Default to 1 copy
+    };
+    const { data, error } = await supabase.from("books").insert([book]);
+    if (error) throw error;
     setSuccessPopup("Book successfully added!");
     setTimeout(() => navigate("/profile"), 1000);
   };
@@ -279,12 +322,12 @@ const AdminProfile = () => {
           <div>
             <h2 className="text-2xl font-semibold text-white">{user?.name}</h2>
             <p className="text-gray-300">{user?.email}</p>
+            <p className="text-gray-400 text-sm mt-1 capitalize">{user?.role}</p>
           </div>
         </div>
 
-        <div className="absolute top-4 right-4 text-right">
+        <div className="absolute top-25 right-7 text-right">
           <button className="bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition-all duration-300" onClick={handleEditClick}>✏️ Edit</button>
-          <p className="text-gray-400 text-sm mt-1 capitalize">Role: {user?.role}</p>
         </div>
 
         <div className="flex flex-col items-center mt-6 gap-4">
@@ -406,14 +449,14 @@ const AdminProfile = () => {
               <h3 className="text-lg font-semibold mb-4">Add Book by ISBN</h3>
               <input
                 type="text"
-                value={isbnInput}
-                onChange={(e) => setIsbnInput(e.target.value)}
+                value={isbn}
+                onChange={(e) => setIsbn(e.target.value)}
                 placeholder="Enter ISBN Number"
                 className="w-full p-2 border rounded-lg bg-gray-700 text-white mb-4"
               />
               <div className="flex justify-end gap-2">
                 <button className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-all" onClick={() => setIsbnPopup(false)}>Cancel</button>
-                <button className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all" onClick={handleAddBookByIsbn}>Add</button>
+                <button className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all" onClick={handleAddBook}>Add</button>
               </div>
             </motion.div>
           </>
