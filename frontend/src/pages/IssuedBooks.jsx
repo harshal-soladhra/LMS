@@ -83,7 +83,10 @@ const IssuedBooks = () => {
                 </motion.div>
               ))}
             </div>
-            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
 export default IssuedBooks;
