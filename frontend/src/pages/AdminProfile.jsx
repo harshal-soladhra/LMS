@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../supabaseClient";
 import { addBook } from "../api";
+
 // Dummy data for admin features
 const dummyUsers = [
   { id: 1, name: "John Doe", email: "john@example.com", role: "member" },
@@ -76,8 +77,6 @@ const AdminProfile = () => {
     language: "",
     copies: ""
   });
-
-
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -228,6 +227,7 @@ const AdminProfile = () => {
       navigate("/profile");
     }
   };
+
   const handlemanualsubmit = async () => {
     if (!manualBookData.title || !manualBookData.author || !manualBookData.publicationDate || !manualBookData.copies) {
       alert("Please fill in all required fields.");
@@ -265,10 +265,7 @@ const AdminProfile = () => {
       alert("Please fill in all required fields.");
       return;
     }
-    // setManualAddPopup(false);
-    // setAddBooksPopup(false);
-    // setManageBooksPopup(false);
-    console.log(manualBookData)
+    console.log(manualBookData);
     const book = {
       title: manualBookData.title || "Unknown",
       author: manualBookData.author ? manualBookData.author.join(", ") : "Unknown",
@@ -364,7 +361,7 @@ const AdminProfile = () => {
             <motion.div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setUsersPopup(false)} />
             <motion.div className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-[600px] z-50" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
               <h3 className="text-lg font-semibold mb-4">All Users</h3>
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-[400px] overflow-y-auto">
                 <div className="flex justify-between p-3 bg-blue-600 rounded-lg font-semibold"><span className="w-1/3">Name</span><span className="w-1/3 text-center">Email</span><span className="w-1/3 text-right">Role</span></div>
                 {allUsers.length > 0 ? allUsers.map((user, index) => (
                   <motion.div key={index} className="flex justify-between p-3 bg-gray-700 rounded-lg" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
@@ -494,7 +491,7 @@ const AdminProfile = () => {
             <motion.div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setModifyBooksPopup(false)} />
             <motion.div className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-[600px] z-60" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
               <h3 className="text-lg font-semibold mb-4">Modify Books</h3>
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-[400px] overflow-y-auto">
                 <div className="flex justify-between p-3 bg-blue-600 rounded-lg font-semibold">
                   <span className="w-1/4">Book Name</span>
                   <span className="w-1/4 text-center">Author Name</span>
@@ -549,7 +546,7 @@ const AdminProfile = () => {
             <motion.div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDeleteBooksPopup(false)} />
             <motion.div className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-[600px] z-60" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
               <h3 className="text-lg font-semibold mb-4">Delete Books</h3>
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-[400px] overflow-y-auto">
                 <div className="flex justify-between p-3 bg-blue-600 rounded-lg font-semibold">
                   <span className="w-1/4">Book Name</span>
                   <span className="w-1/4 text-center">Author Name</span>
@@ -579,7 +576,7 @@ const AdminProfile = () => {
             <motion.div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setRequestsPopup(false)} />
             <motion.div className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-[600px] z-50" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
               <h3 className="text-lg font-semibold mb-4">Book Requests</h3>
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-[400px] overflow-y-auto">
                 <div className="flex justify-between p-3 bg-blue-600 rounded-lg font-semibold"><span className="w-1/4">User</span><span className="w-1/4 text-center">Book Name</span><span className="w-1/4 text-center">Status</span><span className="w-1/4 text-right">Action</span></div>
                 {bookRequests.length > 0 ? bookRequests.map((request, index) => (
                   <motion.div key={index} className="flex justify-between p-3 bg-gray-700 rounded-lg" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
@@ -607,7 +604,7 @@ const AdminProfile = () => {
             <motion.div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setReturnRequestsPopup(false)} />
             <motion.div className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-[600px] z-50" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
               <h3 className="text-lg font-semibold mb-4">Approve Return Requests</h3>
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-[400px] overflow-y-auto">
                 <div className="flex justify-between p-3 bg-blue-600 rounded-lg font-semibold">
                   <span className="w-1/5">User</span><span className="w-1/5 text-center">Book Name</span><span className="w-1/5 text-center">Status</span><span className="w-1/5 text-center">Late Fee</span><span className="w-1/5 text-right">Action</span>
                 </div>
@@ -637,7 +634,7 @@ const AdminProfile = () => {
             <motion.div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setReservationsPopup(false)} />
             <motion.div className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-[600px] z-50" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
               <h3 className="text-lg font-semibold mb-4">Approve Reservations</h3>
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-[400px] overflow-y-auto">
                 <div className="flex justify-between p-3 bg-blue-600 rounded-lg font-semibold">
                   <span className="w-1/4">User</span><span className="w-1/4 text-center">Book Name</span><span className="w-1/4 text-center">Status</span><span className="w-1/4 text-right">Action</span>
                 </div>
@@ -667,7 +664,7 @@ const AdminProfile = () => {
             <motion.div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setTransactionPopup(false)} />
             <motion.div className="fixed bg-gray-800 text-white p-6 rounded-xl shadow-lg w-[600px] z-50" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
               <h3 className="text-lg font-semibold mb-4">Transactions</h3>
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-[400px] overflow-y-auto">
                 <div className="flex justify-between p-3 bg-blue-600 rounded-lg font-semibold">
                   <span className="w-1/5">User</span>
                   <span className="w-1/5 text-center">Book Name</span>
