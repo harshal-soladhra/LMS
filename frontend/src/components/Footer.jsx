@@ -22,7 +22,7 @@ export const Footer = () => {
             <li><a href="/Main">Home</a></li>
             <li><a href="/Profile">Profile</a></li>
             <li><a href="/Books">Books</a></li>
-            <li><a href="#contact">Enquiry</a></li>
+            <li><a href="/Enquiry">Enquiry</a></li>
           </ul>
         </div>
 

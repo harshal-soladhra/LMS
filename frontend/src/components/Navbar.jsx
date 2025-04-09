@@ -98,6 +98,7 @@ return (
           { path: "/", label: "Home" },
           { path: "/books", label: "Books" },
           { path: "/profile", label: "Profile" },
+          { path: "/Enquiry", label: "Enquiry" },
         ].map((item) => (
           <li key={item.path}>
             <Link
