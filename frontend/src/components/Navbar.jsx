@@ -97,7 +97,6 @@ return (
         {[
           { path: "/", label: "Home" },
           { path: "/books", label: "Books" },
-          { path: "/add-book", label: "Admin Panel" },
           { path: "/profile", label: "Profile" },
         ].map((item) => (
           <li key={item.path}>
@@ -187,7 +186,6 @@ return (
           {[
             { path: "/", label: "Home" },
             { path: "/books", label: "Books" },
-            { path: "/admin", label: "Admin Panel" },
             { path: "/profile", label: "Profile" },
           ].map((item) => (
             <li key={item.path}>

@@ -100,7 +100,32 @@ const Books = () => {
       (editionFilter === "" || book.edition === editionFilter)
     );
   });
-
+  const issueBook = async (bookId) => {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+  
+    if (userError || !user) {
+      alert("Please log in to issue books.");
+      return;
+    }
+  
+    const { error } = await supabase.from("issued_books").insert([
+      {
+        user_id: user.id,
+        book_id: bookId,
+      },
+    ]);
+  
+    if (error) {
+      console.error("Issue failed:", error.message);
+      alert("Failed to issue book.");
+    } else {
+      alert("Book issued successfully!");
+    }
+  };
+  
   // ✅ Handle Book Issue
   const handleIssueBook = async (bookId, copies) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -141,6 +166,7 @@ const Books = () => {
           {
             user_id: user.id,
             book_id: bookId,
+            return_date: dueDate.toISOString(),
           },
         ]);
       
@@ -155,6 +181,7 @@ const Books = () => {
       console.error("🔥 Book Issue Error:", err);
       alert("Failed to issue book.");
     }
+    issueBook(bookId);
   };
 
   return (

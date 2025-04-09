@@ -6,7 +6,6 @@ import Profile from "../pages/Profile";
 import Books from "../pages/Books";
 import ProtectedRoute from "../components/ProtectedRoute";
 import AvailableBooks from "../pages/AvailableBooks";
-import AddBook from "../pages/AddBook";
 import Ebooks from "../pages/Ebooks";
 import AudioBooks from "../pages/AudioBooks";
 import AdminProfile from "../pages/AdminProfile";
@@ -22,7 +21,6 @@ const AppRoutes = () => {
             <Route path="/main" element={<Main />} />
             <Route path="/books" element={<Books />} />
             <Route path="/profile" element={<Profile />} />
-            <Route path="/add-book" element={<AddBook />} />
             <Route path="/available-books" element={<AvailableBooks/>} />
             <Route path="/ebooks" element={<Ebooks />} />
             <Route path="/audiobooks" element={<AudioBooks />} />
