@@ -11,6 +11,7 @@ import AudioBooks from "../pages/AudioBooks";
 import AdminProfile from "../pages/AdminProfile";
 import IssuedBooks from "../pages/IssuedBooks";
 import Enquiry from "../pages/Enquiry";
+import Reservations from "../pages/Reservations";
 const AppRoutes = () => {
     return (
         <Routes basename="/" className="h-full">
@@ -28,6 +29,7 @@ const AppRoutes = () => {
             <Route path="/adminprofile" element={<AdminProfile />} />
             <Route path="/issued-books" element={<IssuedBooks />} />
             <Route path="/enquiry" element={<Enquiry />} />
+            <Route path="/reservations" element={<Reservations />} />
             {/* <Route path="/book-request" element={<BookRequestModal />} /> */}
             {/* 404 Page */}
             <Route path="*" element={<h1>404 - Page Not Found</h1>} />
