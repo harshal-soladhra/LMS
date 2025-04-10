@@ -18,7 +18,9 @@ const Books = () => {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [loadingMore, setLoadingMore] = useState(false);
-
+  const issueDate = new Date();
+  const dueDate = new Date(issueDate);
+  dueDate.setDate(dueDate.getDate() + 14);
   // ✅ Fetch User Data & Library Books
   useEffect(() => {
     const fetchUserAndLibraryBooks = async () => {
@@ -100,32 +102,7 @@ const Books = () => {
       (editionFilter === "" || book.edition === editionFilter)
     );
   });
-  const issueBook = async (bookId) => {
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-  
-    if (userError || !user) {
-      alert("Please log in to issue books.");
-      return;
-    }
-  
-    const { error } = await supabase.from("issued_books").insert([
-      {
-        user_id: user.id,
-        book_id: bookId,
-      },
-    ]);
-  
-    if (error) {
-      console.error("Issue failed:", error.message);
-      alert("Failed to issue book.");
-    } else {
-      alert("Book issued successfully!");
-    }
-  };
-  
+
   // ✅ Handle Book Issue
   const handleIssueBook = async (bookId, copies) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -141,47 +118,36 @@ const Books = () => {
       return;
     }
 
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 14);
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase.from("issued_books").insert([
+        {
+          user_id: user.id,
+          book_id: bookId,
+          issue_date: issueDate.toISOString(),
+          due_date: dueDate.toISOString(),
+        },
+      ]);
+
+      if (error) throw error;
+      const { error: updatecopyerror } = await supabase 
         .from("books")
         .update({
-          issued_to: user.id,
-          issued_date: new Date().toISOString(),
-          due_date: dueDate.toISOString(),
           copies: copies - 1,
         })
         .eq("id", bookId);
-
-      if (error) throw error;
+      if (updatecopyerror) throw updatecopyerror;
       await supabase.from("notifications").insert([
         {
           user_id: user.id,
           message: `You have successfully issued the book! Due date: ${dueDate.toDateString()}`,
         },
       ]);
-      await supabase.from("issued_books").insert([
-          {
-            user_id: user.id,
-            book_id: bookId,
-            return_date: dueDate.toISOString(),
-          },
-        ]);
-      
-        if (error) {
-          console.error("Issue failed:", error.message);
-          alert("Failed to issue book.");
-        } else {
-          alert("Book issued successfully!");
-        };
       alert("Book issued successfully!");
-    } catch (err) {
-      console.error("🔥 Book Issue Error:", err);
+    } catch (error) {
+      console.error("🔥 Error issuing book:", error.message);
       alert("Failed to issue book.");
     }
-    issueBook(bookId);
   };
 
   return (

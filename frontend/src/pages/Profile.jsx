@@ -14,6 +14,7 @@ function Profile() {
   const [popup, setPopup] = useState(null);
   const [lateFeesPopup, setLateFeesPopup] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+
   const [booksData, setBooksData] = useState({
     issuedbooks: [],
     returnedbooks: [],
@@ -39,27 +40,32 @@ function Profile() {
       setUserPhoto(userData.profile_picture || "https://via.placeholder.com/150");
       const fetchBooksData = async (userId) => {
         try {
-          const { data: issuedBooks, issuedError } = await supabase
-            .from("books")
-            .select("*")
-            .eq("issued_to", userId)
-            .is("returned_date", null); // not returned yet
+          // All books currently issued (not returned)
+          const { data: issuedBooks, error: issuedError } = await supabase
+            .from("issued_books")
+            .select("*, books(author,title)") // joins books data
+            .eq("user_id", userId)
+          console.log("Fetched issued books:", issuedBooks);
 
-          const { data: returnedBooks, returnedError } = await supabase
-            .from("books")
-            .select("*")
-            .eq("issued_to", userId)
-            .not("returned_date", "is", null); // already returned
+          // All returned books
+          const { data: returnedBooks, error: returnedError } = await supabase
+            .from("issued_books")
+            .select("*, books(title, author)")
+            .eq("user_id", userId)
+            .is("returned", true);
 
-          const { data: returnDueBooks, dueError } = await supabase
-            .from("books")
-            .select("*")
-            .eq("issued_to", userId)
-            .lte("due_date", new Date().toISOString()) // overdue
-            .is("returned_date", null); // not returned yet
-
+          // Books that are overdue and not returned
+          const { data: returnDueBooks, error: dueError } = await supabase
+            .from("issued_books")
+            .select("*, books(*)")
+            .eq("user_id", userId) // due_date in the past
+            .is("return_date", null);
+          console.log("Fetched return due books:", returnDueBooks);
           if (issuedError || returnedError || dueError) {
-            console.error("Error fetching books data:", issuedError || returnedError || dueError);
+            console.error(
+              "Error fetching books data:",
+              issuedError || returnedError || dueError
+            );
             return;
           }
 
@@ -104,6 +110,7 @@ function Profile() {
     };
 
     fetchProfile();
+
   }, [navigate]);
 
 
@@ -162,22 +169,23 @@ function Profile() {
 
   const handleReturnBook = async (bookId) => {
     // Fetch the book to get current copies
+    console.log("Book ID:", bookId);
     const { data: book, error: fetchError } = await supabase
-      .from("books")
-      .select("copies, lateFees")
-      .eq("id", bookId)
-      .single();
+      .from("issued_books")
+      .select("*,books(*)")
+      .eq("book_id", bookId)
+    // .single();
 
     if (fetchError) {
       console.error("Failed to fetch book:", fetchError.message);
+      console.log(bookId)
       return;
     }
-
+    console.log("Fetched book:", book[0]);
     const { error: updateError } = await supabase
       .from("books")
       .update({
-        returned_date: new Date().toISOString(),
-        copies: book.copies + 1,
+        copies: book[0].books.copies + 1,
       })
       .eq("id", bookId);
 
@@ -186,23 +194,72 @@ function Profile() {
       return;
     }
 
-    await supabase.from("transactions").insert([
+
+    const { error: transactionsError } = await supabase.from("transactions").insert([
       {
-        user_id: user.id,
-        book_id: bookId,
-        type: "return",
-        amount: book.lateFees || 0,
-        timestamp: new Date().toISOString(),
+        user_id: book[0].user_id,
+        book_id: book[0].book_id,
+        action: "book return",
+        fine_amount: book[0].lateFees || 0,
+        action_date: new Date().toISOString(),
         notes: "Returned with late fees"
       }
     ]);
+    console.log("Transaction data:", book[0].user_id, book[0].book_id, book[0].lateFees || 0);
+    if (transactionsError) {
+      console.error("Transaction insertion failed:", transactionsError.message);
+      return;
+    }
+    const today = new Date();
+
+    let lateFees = 0;
+    const dueDate = new Date(book.due_date);
+
+    if (today > dueDate) {
+      const lateDays = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
+      lateFees = lateDays * 5; // $5 per day
+    }
+
+    // Step 3: Update the issued book record
+    const { error: latefeesupdateError } = await supabase
+      .from("issued_books")
+      .update({
+        returned: true,
+        return_date: today.toISOString(),
+        lateFees: lateFees,
+      })
+      .eq("book_id", bookId);
+    console.log("book id:", bookId);
+    if (latefeesupdateError) {
+      console.error("Error updating book:", latefeesupdateError.message);
+    } else {
+      console.log("Book returned and late fees updated:", lateFees);
+    }
+
 
     // Refresh data
     window.location.reload(); // or call fetchProfile() if you move it out
   };
 
   const calculateTotalFees = (type) => {
-    return booksData[type].reduce((total, book) => total + (book.lateFees || 0), 0);
+    const today = new Date();
+
+    return booksData[type].reduce((total, book) => {
+      let lateFees = 0;
+
+      if (!book.returned && book.due_date) {
+        const dueDate = new Date(book.due_date);
+
+        if (today > dueDate) {
+          const lateDays = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
+          lateFees = lateDays * 5; // $5 per day
+        }
+      } else if (book.lateFees) {
+        lateFees = book.lateFees;
+      }
+
+      return total + lateFees;
+    }, 0);
   };
 
   const totalReturnedFees = calculateTotalFees("returnedbooks");
@@ -222,13 +279,14 @@ function Profile() {
     setPaymentSuccess(false);
     setLateFeesPopup(false);
   };
-
+  console.log("data; ",booksData);
   if (loading) return <p>Loading profile...</p>;
   if (!booksData) return <p>Loading book data...</p>;
 
   return (
     <div className="min-h-screen w-full bg-gray-900 flex justify-center items-center p-6">
       <div className="bg-white/10 backdrop-blur-lg p-6 rounded-2xl shadow-xl w-full max-w-4xl relative border border-white/20">
+        {/* Profile Header */}
         <div className="flex items-center gap-6 border-b border-gray-500 pb-4">
           <div className="relative w-24 h-24">
             <div className="rounded-full overflow-hidden w-full h-full">
@@ -255,6 +313,7 @@ function Profile() {
           </div>
         </div>
 
+        {/* Edit Button */}
         <div className="absolute top-25 right-7 text-right">
           <button
             className="bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition-all duration-300"
@@ -262,24 +321,23 @@ function Profile() {
           >
             ✏️ Edit
           </button>
-
         </div>
 
+        {/* Main Buttons */}
         <div className="flex flex-col items-center mt-6 gap-4">
-          {["Issued Books", "Returned Books", "Return Due", "Requested Books", "Transactions", "Late Fees"].map((label, index) => (
+          {["Issued Books", "Returned Books", "Return Due", "Requested Books", "Transactions", "Late Fees"].map((label) => (
             <motion.button
-              key={index}
+              key={label}
               whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 255, 255, 0.6)" }}
-              className={`w-64 bg-gray-800 text-white px-5 py-3 rounded-lg text-lg font-semibold transition-all hover:bg-gray-700 ${label === "Late Fees" && totalLateFees === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
+              className={`w-64 bg-gray-800 text-white px-5 py-3 rounded-lg text-lg font-semibold transition-all hover:bg-gray-700 ${label === "Late Fees" && totalLateFees === 0 ? "opacity-50 cursor-not-allowed" : ""
+                }`}
               onClick={() => {
                 if (label === "Issued Books") openPopup("issuedbooks");
                 if (label === "Returned Books") openPopup("returnedbooks");
                 if (label === "Return Due") openPopup("returndue");
                 if (label === "Late Fees" && totalLateFees > 0) setLateFeesPopup(true);
                 if (label === "Transactions") openPopup("transactions");
-                // if (label === "Requested Books") navigate("/book-request", { replace: true });
                 if (label === "Requested Books") openPopup("requestedbooks");
-
               }}
               disabled={label === "Late Fees" && totalLateFees === 0}
             >
@@ -289,6 +347,7 @@ function Profile() {
         </div>
       </div>
 
+      {/* Edit Modal */}
       <AnimatePresence>
         {isEditing && (
           <>
@@ -335,13 +394,13 @@ function Profile() {
               </label>
               <div className="flex justify-end mt-4">
                 <button
-                  className="bg-gray-500 text-white px-4 py-2 rounded-lg mr-2 hover:bg-gray-600 transition-all"
+                  className="bg-gray-500 text-white px-4 py-2 rounded-lg mr-2 hover:bg-gray-600"
                   onClick={() => setIsEditing(false)}
                 >
                   Cancel
                 </button>
                 <button
-                  className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all"
+                  className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
                   onClick={handleSaveChanges}
                 >
                   Save Changes
@@ -352,8 +411,9 @@ function Profile() {
         )}
       </AnimatePresence>
 
+      {/* Books & Transaction Popup */}
       <AnimatePresence>
-        {popup && (
+        {popup && popup !== "requestedbooks" && (
           <>
             <motion.div
               className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
@@ -369,51 +429,17 @@ function Profile() {
               exit={{ scale: 0.9, opacity: 0 }}
             >
               <h3 className="text-lg font-semibold mb-4 capitalize">
-                {popup === "issuedbooks" ? "Issued Books" : popup === "returnedbooks" ? "Returned Books" : "Return Due"}
+                {popup === "issuedbooks"
+                  ? "Issued Books"
+                  : popup === "returnedbooks"
+                    ? "Returned Books"
+                    : popup === "returndue"
+                      ? "Return Due"
+                      : "Transactions"}
               </h3>
               <div className="space-y-4 max-h-[400px] overflow-y-auto">
-                <div className="flex justify-between p-3 bg-blue-600 rounded-lg font-semibold">
-                  <span className="w-1/3">Book Name</span>
-                  <span className="w-1/3 text-center">Author Name</span>
-                  <span className={popup === "returndue" ? "w-1/6 text-right" : "w-1/3 text-right"}>Date</span>
-                  {(popup === "returndue" || popup === "returnedbooks") && <span className="w-1/6 text-right">Late Fees</span>}
-                  {popup === "returndue" && <span className="w-1/6 text-right">Action</span>}
-                </div>
-                {booksData[popup].length > 0 ? (
-                  booksData[popup].map((book, index) => (
-                    <motion.div
-                      key={index}
-                      className="flex justify-between p-3 bg-gray-700 rounded-lg"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      <span className="w-1/3">{book.title}</span>
-                      <span className="w-1/3 text-center">{book.author}</span>
-                      <span className={popup === "returndue" ? "w-1/6 text-right" : "w-1/3 text-right"}>{book.issued_date}</span>
-                      {(popup === "returndue" || popup === "returnedbooks") && (
-                        <span className="w-1/6 text-right">${book.lateFees || 0}</span>
-                      )}
-                      {popup === "returndue" && (
-                        <span className="w-1/6 text-right">
-                          <button
-                            className="bg-green-500 text-white px-2 py-1 rounded-lg hover:bg-green-600 transition-all"
-                            onClick={() => handleReturnBook(book_id)}
-                          >
-                            Return
-                          </button>
-                        </span>
-                      )}
-                    </motion.div>
-                  ))
-                ) : (
-                  <p className="text-gray-400">No data available</p>
-                )}
-                {popup === "requestedbooks" && (
-                  <BookRequestModal setShowModal={() => setPopup(null)} />
-                )}
-                {popup === "transactions" && (
-                  <div className="space-y-4">
+                {popup === "transactions" ? (
+                  <>
                     <div className="flex justify-between p-3 bg-blue-600 rounded-lg font-semibold">
                       <span className="w-1/3">Book</span>
                       <span className="w-1/4 text-center">Type</span>
@@ -429,20 +455,64 @@ function Profile() {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: index * 0.05 }}
                         >
-                          <span className="w-1/3">{txn.books?.title || "N/A"}</span>
-                          <span className="w-1/4 text-center capitalize">{txn.type}</span>
-                          <span className="w-1/4 text-right">${txn.amount || 0}</span>
-                          <span className="w-1/4 text-right">{new Date(txn.timestamp).toLocaleDateString()}</span>
+                          <span className="w-1/3">{txn.books.title || "N/A"}</span>
+                          <span className="w-1/4 text-center capitalize">{txn.action || ""}</span>
+                          <span className="w-1/4 text-right">${txn.fine_amount || 0}</span>
+                          <span className="w-1/4 text-right">{new Date(txn.action_date).toLocaleDateString()}</span>
                         </motion.div>
                       ))
                     ) : (
                       <p className="text-gray-400">No transactions found</p>
                     )}
-                  </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between p-3 bg-blue-600 rounded-lg font-semibold">
+                      <span className="w-1/3">Book Name</span>
+                      <span className="w-1/3 text-center">Author Name</span>
+                      <span className={popup === "returndue" ? "w-1/6 text-right" : "w-1/3 text-right"}>Date</span>
+                      {(popup === "returndue" || popup === "returnedbooks") && (
+                        <span className="w-1/6 text-right">Late Fees</span>
+                      )}
+                      {popup === "returndue" && <span className="w-1/6 text-right">Action</span>}
+                    </div>
+                    {booksData[popup].length > 0 ? (
+                      booksData[popup].map((book, index) => (
+                        <motion.div
+                          key={index}
+                          className="flex justify-between p-3 bg-gray-700 rounded-lg"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                        >
+                          <span className="w-1/3">{book.books?.title || "N/A"}</span>
+                          <span className="w-1/3 text-center">{book.books?.author || "N/A"}</span>
+                          <span className={popup === "returndue" ? "w-1/6 text-right" : "w-1/3 text-right"}>
+                            {book.issue_date}
+                          </span>
+                          {(popup === "returndue" || popup === "returnedbooks") && (
+                            <span className="w-1/6 text-right">${book.lateFees || 0}</span>
+                          )}
+                          {popup === "returndue" && (
+                            <span className="w-1/6 text-right">
+                              <button
+                                className="bg-green-500 text-white px-2 py-1 rounded-lg hover:bg-green-600"
+                                onClick={() => handleReturnBook(book.book_id)}
+                              >
+                                Return
+                              </button>
+                            </span>
+                          )}
+                        </motion.div>
+                      ))
+                    ) : (
+                      <p className="text-gray-400">No data available</p>
+                    )}
+                  </>
                 )}
               </div>
               <button
-                className="mt-4 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all w-full"
+                className="mt-4 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 w-full"
                 onClick={closePopup}
               >
                 Close
@@ -452,6 +522,14 @@ function Profile() {
         )}
       </AnimatePresence>
 
+      {/* Book Request Modal */}
+      <AnimatePresence>
+        {popup === "requestedbooks" && (
+          <BookRequestModal setShowModal={() => setPopup(null)} />
+        )}
+      </AnimatePresence>
+
+      {/* Late Fees Modal */}
       <AnimatePresence>
         {lateFeesPopup && (
           <>
@@ -472,13 +550,13 @@ function Profile() {
               <p className="mb-4">Total Late Fees: ${totalLateFees}</p>
               <div className="flex justify-between">
                 <button
-                  className="bg-green-5 00 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all"
+                  className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
                   onClick={handlePayNow}
                 >
                   Pay Now
                 </button>
                 <button
-                  className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-all"
+                  className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
                   onClick={() => setLateFeesPopup(false)}
                 >
                   Pay Later
@@ -489,6 +567,7 @@ function Profile() {
         )}
       </AnimatePresence>
 
+      {/* Payment Success Modal */}
       <AnimatePresence>
         {paymentSuccess && (
           <>
@@ -508,7 +587,7 @@ function Profile() {
               <h3 className="text-lg font-semibold mb-4">Payment Successful</h3>
               <p className="mb-4">Your late fees have been successfully paid!</p>
               <button
-                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all w-full"
+                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 w-full"
                 onClick={closePaymentSuccess}
               >
                 Close
@@ -519,6 +598,7 @@ function Profile() {
       </AnimatePresence>
     </div>
   );
+
 }
 
 export default Profile;

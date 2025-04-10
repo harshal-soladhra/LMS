@@ -18,9 +18,9 @@ const IssuedBooks = () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from("issued_books")
-        .select("id, book_title, issue_date, return_date")
-        .order("issue_date", { ascending: false });
+        .from('issued_books')
+        .select('book_id, issue_date, user_id, books(title, author)')
+        .eq('user_id', user.id); // optional: get only user's books
 
       if (error) {
         console.error("Error fetching issued books:", error.message);
@@ -125,7 +125,7 @@ const IssuedBooks = () => {
                 {filteredBooks.map((book) => (
                   <motion.div
                     key={book.id}
-                    className="p-4 bg-white p-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 flex items-center justify-between"
+                    className="p-4 bg-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 flex items-center justify-between"
                     initial={{ opacity: 0, y: 50 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 0.1 * filteredBooks.indexOf(book) }}
