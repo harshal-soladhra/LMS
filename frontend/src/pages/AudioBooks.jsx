@@ -164,7 +164,7 @@ const AudioBooks = () => {
                     <p className="text-sm text-gray-600">Genre: {book.genre}</p>
                     <p className="text-sm text-gray-600">Language: {book.language}</p>
                     <p className="text-sm text-gray-600">Edition: {book.edition}</p>
-                    <p className="text-sm text-gray-600">Copies Available: {book.copies}</p>
+                    {/* <p className="text-sm text-gray-600">Copies Available: {book.copies}</p> */}
                     <div className="flex gap-10">
                       {book.isExternal ? (
                         <button className="mt-2 px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600">Request Book</button>
