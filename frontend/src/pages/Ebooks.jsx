@@ -1,92 +1,79 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { supabase } from "../supabaseClient";
 import NavbarBooks from "../components/NavbarBooks";
 
 const Ebooks = () => {
-  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [genreFilter, setGenreFilter] = useState("");
   const [languageFilter, setLanguageFilter] = useState("");
   const [editionFilter, setEditionFilter] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [selectedBook, setSelectedBook] = useState(null);
-  const [books, setBooks] = useState([]);
-  const [user, setUser] = useState({ id: null });
   const [apiBooks, setApiBooks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
   const [isReadingPopupOpen, setIsReadingPopupOpen] = useState(false);
   const [currentReadingBook, setCurrentReadingBook] = useState(null);
 
-  useEffect(() => {
-    const fetchUserAndLibraryBooks = async () => {
-      const token = localStorage.getItem("supabase_token");
-      if (token) {
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError || !user) {
-          console.error("🔥 Error fetching user:", userError?.message || "No user found");
-          return;
-        }
-        setUser(user);
-      }
-      const { data: booksData, error: booksError } = await supabase.from("books").select("*");
-      if (booksError) {
-        console.error("🔥 Error fetching books:", booksError.message);
-      } else {
-        setBooks(booksData);
-      }
-      setLoading(false);
-    };
-    fetchUserAndLibraryBooks();
-  }, []);
+  // Load more books function
+  const loadMoreBooks = () => setPage((prevPage) => prevPage + 1);
 
+  // Google Books API fetch
   useEffect(() => {
-    const fetchAPIbooks = async () => {
+    const fetchGoogleBooks = async () => {
       setLoadingMore(true);
       try {
-        const response = await fetch(`https://openlibrary.org/search.json?q=programming&limit=10&page=${page}&fields=key,title,author_name,language,edition_count,cover_i,first_publish_year,number_of_pages_median,subject`);
+        const response = await fetch(
+          `https://www.googleapis.com/books/v1/volumes?q=programming&startIndex=${page * 10}&maxResults=10&printType=books&filter=free-ebooks`
+        );
         const data = await response.json();
-        if (data.docs.length === 0) {
+        if (!data.items || data.items.length === 0) {
           setLoadingMore(false);
           return;
         }
-        const formattedBooks = data.docs.map((book, index) => ({
-          id: `${book.key}-${index}`,
-          title: book.title,
-          author: book.author_name?.join(", ") || "Unknown",
-          genre: "Unknown",
-          language: book.language?.[0] || "Unknown",
-          edition: book.edition_count || "Unknown",
-          coverImage: book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-M.jpg` : null,
-          copies: 0,
-          isExternal: true,
-          firstPublishYear: book.first_publish_year || "Unknown",
-          numberOfPages: book.number_of_pages_median || "Unknown",
-          subjects: book.subject?.slice(0, 3).join(", ") || "Unknown",
-          key: book.key,
-          bookUrl: `https://openlibrary.org${book.key}`,
-        }));
+
+        const formattedBooks = data.items.map((item, index) => {
+          const info = item.volumeInfo;
+          return {
+            id: `${item.id}-${index}`,
+            title: info.title || "Untitled",
+            author: info.authors?.join(", ") || "Unknown",
+            genre: info.categories?.join(", ") || "Unknown",
+            language: info.language || "Unknown",
+            edition: info.contentVersion || "Unknown",
+            coverImage:
+              info.imageLinks?.extraLarge ||
+              info.imageLinks?.large ||
+              info.imageLinks?.medium ||
+              info.imageLinks?.thumbnail ||
+              null,
+            copies: 0,
+            isExternal: true,
+            firstPublishYear: info.publishedDate || "Unknown",
+            numberOfPages: info.pageCount || "Unknown",
+            subjects: info.categories?.slice(0, 3).join(", ") || "Unknown",
+            key: item.id,
+            bookUrl: info.previewLink || "",
+          };
+        });
+
         setApiBooks((prevBooks) => [...prevBooks, ...formattedBooks]);
       } catch (error) {
-        console.error("🔥 Error fetching API books:", error);
+        console.error("🔥 Error fetching Google Books:", error);
       } finally {
         setLoadingMore(false);
       }
     };
-    fetchAPIbooks();
+
+    fetchGoogleBooks();
   }, [page]);
 
-  const loadMoreBooks = () => setPage((prevPage) => prevPage + 1);
-
-  const mergedBooks = [...books, ...apiBooks];
-  const filteredBooks = mergedBooks.filter((book) =>
+  // Filter books
+  const filteredBooks = apiBooks.filter((book) =>
     book.title.toLowerCase().includes(search.toLowerCase()) &&
-    (genreFilter === "" || book.genre === genreFilter) &&
-    (languageFilter === "" || book.language === languageFilter) &&
-    (editionFilter === "" || book.edition === editionFilter)
+    (genreFilter === "" || book.genre.toLowerCase().includes(genreFilter.toLowerCase())) &&
+    (languageFilter === "" || book.language.toLowerCase().includes(languageFilter.toLowerCase())) &&
+    (editionFilter === "" || book.edition.toLowerCase().includes(editionFilter.toLowerCase()))
   );
 
   return (
@@ -124,31 +111,26 @@ const Ebooks = () => {
           </div>
           <div className="mt-6">
             <h2 className="text-2xl font-semibold mb-5">Book Collection</h2>
-            {loading ? (
-              <p className="text-gray-600">Loading books...</p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredBooks.map((book) => (
-                  <motion.div key={book.id} className="p-5 bg-white shadow-lg rounded-lg flex flex-col justify-between" initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} whileHover={{ scale: 1.05, boxShadow: "0 5px 15px rgba(0,0,0,0.1)" }}>
-                    <div>
-                      <h3 className="text-xl font-bold">{book.title}</h3>
-                      <p className="text-gray-600">Author: {book.author}</p>
-                      <p className="text-gray-600">Genre: {book.genre}</p>
-                      <p className="text-gray-600">Language: {book.language}</p>
-                      <p className="text-gray-600">Edition: {book.edition}</p>
-                    </div>
-                    <div className="flex justify-between mt-4 space-x-2">
-                      {book.isExternal ? (
-                        <button className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600" onClick={() => { setCurrentReadingBook(book); setIsReadingPopupOpen(true); }}>Read Book</button>
-                      ) : (
-                        <button className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600" onClick={() => { setCurrentReadingBook(book); setIsReadingPopupOpen(true); }}>Read Book</button>
-                      )}
-                      <button onClick={() => setSelectedBook(book)} className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">View Details</button>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredBooks.map((book) => (
+                <motion.div key={book.id} className="p-5 bg-white shadow-lg rounded-lg flex flex-col justify-between" initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} whileHover={{ scale: 1.05, boxShadow: "0 5px 15px rgba(0,0,0,0.1)" }}>
+                  <div>
+                    <h3 className="text-xl font-bold"><strong>{book.title}</strong></h3>
+                    <p className="text-gray-600 flex gap-1">Author: <span className="font-bold">{book.author}</span></p>
+                    <p className="text-gray-600 flex gap-1">Genre: <span className="font-bold"> {book.genre}</span></p>
+                    <p className="text-gray-600 flex gap-1">Language: <span className="font-bold">{book.language}</span></p>
+                    <p className="text-gray-600 flex gap-1">Edition: <span className="font-bold">{book.edition}</span></p>
+                  </div>
+                  <div className="flex justify-between mt-4 space-x-2">
+                    <button className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600" onClick={() => { setCurrentReadingBook(book); setIsReadingPopupOpen(true); }}>Read Book</button>
+                    <button onClick={() => setSelectedBook(book)} className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">View Details</button>
+                  </div>
+                </motion.div>
+              ))}
+              {filteredBooks.length === 0 && (
+                <p className="text-gray-500 text-center mt-4">No books found.</p>
+              )}
+            </div>
           </div>
           <div className="flex justify-center items-center mt-6">
             {loadingMore ? (
@@ -159,6 +141,8 @@ const Ebooks = () => {
           </div>
         </div>
       </div>
+
+      {/* View Details Modal */}
       <AnimatePresence>
         {selectedBook && (
           <motion.div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
@@ -185,7 +169,7 @@ const Ebooks = () => {
                 <p className="text-gray-600 mb-2"><strong>Number of Pages:</strong> {selectedBook.numberOfPages}</p>
                 <h4 className="text-lg font-semibold mb-2">Subjects:</h4>
                 <p className="text-gray-600 mb-4">{selectedBook.subjects}</p>
-                <p className="text-gray-600 mb-4">{selectedBook.description || "Grimm's Complete Fairy Tales collects more than 200 tales set down by Jacob and Wilhelm Grimm in the early decades of the nineteenth century, among them some of the best-loved and most famous fairy tales in all literature: 'Little Red Riding Hood,' 'Snow-White and the Seven Dwarfs,' 'Cinderella,' 'Sleeping Beauty,' 'Rapunzel,' 'Rumpelstiltskin,' and 'Tom Thumb.' Voluminous and exhaustive, this collection ranges from the familiar to the obscure. First published in 1812-1815, the Brothers Grimm made a career of preserving and retelling these oral stories that in turn inspired generations of storytelling, both written and oral."}</p>
+                <p className="text-gray-600 mb-4">{selectedBook.description || "Grimm's Complete Fairy Tales collects more than 200 tales set down by Jacob and Wilhelm Grimm..."}</p>
                 <div className="flex justify-end">
                   <button className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600" onClick={() => setSelectedBook(null)}>Cancel</button>
                 </div>
@@ -194,6 +178,8 @@ const Ebooks = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Read Book Modal */}
       <AnimatePresence>
         {isReadingPopupOpen && currentReadingBook && (
           <motion.div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
@@ -203,7 +189,7 @@ const Ebooks = () => {
                 <button className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600" onClick={() => { setIsReadingPopupOpen(false); setCurrentReadingBook(null); }}>Close</button>
               </div>
               <div className="flex-1 w-full h-full">
-                <iframe src={currentReadingBook.bookUrl || `https://openlibrary.org${currentReadingBook.key}`} title={currentReadingBook.title} className="w-full h-full border-none" allowFullScreen>Your browser doesn't support iframes</iframe>
+                <iframe src={currentReadingBook.bookUrl || `http://play.google.com/books/reader?id${currentReadingBook.key}`} title={currentReadingBook.title} className="w-full h-full border-none" allowFullScreen>Your browser doesn't support iframes</iframe>
               </div>
             </motion.div>
           </motion.div>

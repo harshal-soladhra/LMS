@@ -19,7 +19,7 @@ const IssuedBooks = () => {
     try {
       const { data, error } = await supabase
         .from('issued_books')
-        .select('*, books(title, author)')
+        .select('*, books(title, author,edition)')
         .eq('returned', false) // optional: filter by status
         // .eq('user_id', user.id); // optional: get only user's books
 
@@ -40,8 +40,21 @@ const IssuedBooks = () => {
     setLoading(false);
   };
 
-  const handleReserveBook = (id) => {
-    console.log(`Reserving book with id ${id}`);
+  const handleReserveBook = async(book) => {
+    console.log(`Reserving book with id ${book}`);
+    const {error: reservationerror} = await supabase
+      .from('reservations').insert({
+        book_id: book.book_id,
+        user_id: book.user_id,
+        reserved_at: new Date().toISOString(),  
+      })
+    if (reservationerror) {
+      console.error("Error reserving book:", reservationerror.message);
+      return;
+    }
+
+    await supabase
+      .from('issued_books').update({ reserved: true  }).eq('id', book.id);
     setSuccessPopup(true);
     setTimeout(() => setSuccessPopup(false), 2000); // Auto-close after 2 seconds
   };
@@ -55,7 +68,7 @@ const IssuedBooks = () => {
 
     if (search) {
       filtered = filtered.filter((book) =>
-        book.book_title.toLowerCase().includes(search.toLowerCase())
+        book.books.title.toLowerCase().includes(search.toLowerCase())
       );
     }
 
@@ -133,13 +146,15 @@ const IssuedBooks = () => {
                     whileHover={{ scale: 1.05, boxShadow: "0 10px 20px rgba(0, 0, 255, 0.2)" }}
                   >
                     <div>
-                      <h3 className="font-semibold text-lg text-blue-700">{book.book_title}</h3>
+                      <h3 className="font-semibold text-lg text-blue-700">{book.books.title}</h3>
+                      <h4 className="font-semibold text-sm text-blue-600">Author: {book.books.author}</h4>
+                      <p className="text-sm text-blue-600">Edition: {book.books.edition}</p>
                       <p className="text-sm text-blue-600">Issued: {new Date(book.issue_date).toDateString()}</p>
                       <p className="text-sm text-blue-600">Due: {new Date(book.return_date).toDateString()}</p>
                     </div>
                     <div className="flex gap-4 mt-3">
                       <motion.button
-                        onClick={() => handleReserveBook(book.id)}
+                        onClick={() => handleReserveBook(book)}
                         className="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-300 hover:scale-105 transform"
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.95 }}
