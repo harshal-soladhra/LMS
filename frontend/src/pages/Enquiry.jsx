@@ -43,36 +43,46 @@ const Enquiry = () => {
       setError("Please fill in all fields before submitting.");
       return;
     }
-
+    
     const phoneRegex = /^\d{10}$/;
     if (!phoneRegex.test(phone)) {
       setError("Please enter a valid 10-digit phone number.");
       return;
     }
-
+    let filePath;
+    if (formData.attachment) {
+      filePath = `enquiry/attachments/${formData.attachment.name}_${Date.now()}`;
+    }
+    else filePath = null;
     console.log("Enquiry Submitted:", formData);
-
-    // Example: Replace with actual API call
-    // fetch('/api/submit', { method: 'POST', body: formDataToSend })
-    //   .then(response => response.json())
-    //   .then(data => console.log(data))
-    //   .catch(error => console.error('Error:', error));
-    const { data, error: dataerror } = await supabase.from("enquiry").insert({
+    const { error } = await supabase.from("enquiry").insert({
       firstName: firstName,
       lastName: lastName,
       phone: phone,
       email: email,
       message: message,
-      attachment: formData.attachment ? formData.attachment : null,
+      attachment: filePath,
     });
-    if (dataerror) {
-      console.error("Error uploading attachment:", dataerror);
-      setError("Failed to upload attachment. Please try again.");
+    
+    if (error) {
+      console.error("Error submitting enquiry:", error);
+      setError("Failed to submit enquiry. Please try again.");
       return;
     }
-    else {
-      console.log("Attachment uploaded successfully!", data);
+    if(filePath){
+    const { error: uploadError } = await supabase.storage
+        .from("enquiry-attachments")
+        .upload(filePath, formData.attachment, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+      if (uploadError) {
+        console.error("Error uploading attachment:", uploadError);
+        setError("Failed to upload attachment. Please try again.");
+        return;
+      }
     }
+    console.log("Attachment uploaded successfully!");
     alert("Thanks for your enquiry! We will get in touch with you shortly.");
     setFormData({ firstName: "", lastName: "", phone: "", email: "", message: "", attachment: null });
     setPreviewUrl(null);
