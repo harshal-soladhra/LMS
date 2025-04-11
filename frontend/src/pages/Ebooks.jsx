@@ -31,6 +31,9 @@ const Ebooks = () => {
           setLoadingMore(false);
           return;
         }
+        else {
+          console.log("Fetched books:", data.items);
+        }
 
         const formattedBooks = data.items.map((item, index) => {
           const info = item.volumeInfo;
@@ -53,9 +56,15 @@ const Ebooks = () => {
             numberOfPages: info.pageCount || "Unknown",
             subjects: info.categories?.slice(0, 3).join(", ") || "Unknown",
             key: item.id,
-            bookUrl: info.previewLink || "",
+            bookUrl:
+              item.accessInfo?.webReaderLink ||
+              item.volumeInfo?.previewLink ||
+              "",
+            embeddable: item.accessInfo?.embeddable === true,
+            viewability: item.accessInfo?.viewability || "NONE",
           };
         });
+        console.log("Formatted book:", formattedBooks);
 
         setApiBooks((prevBooks) => [...prevBooks, ...formattedBooks]);
       } catch (error) {
@@ -189,7 +198,35 @@ const Ebooks = () => {
                 <button className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600" onClick={() => { setIsReadingPopupOpen(false); setCurrentReadingBook(null); }}>Close</button>
               </div>
               <div className="flex-1 w-full h-full">
-                <iframe src={currentReadingBook.bookUrl || `http://play.google.com/books/reader?id${currentReadingBook.key}`} title={currentReadingBook.title} className="w-full h-full border-none" allowFullScreen>Your browser doesn't support iframes</iframe>
+                {/*{currentReadingBook.embeddable && currentReadingBook.viewability === "ALL_PAGES" ? (
+                  <iframe
+                    src={currentReadingBook.bookUrl}
+                    title={currentReadingBook.title}
+                    className="w-full h-full border-none"
+                    allowFullScreen
+                  />
+                ) : (
+                  <div className="text-center text-gray-600">
+                    ❌ This book can't be previewed directly.
+                    <br />
+                    <a
+                      href={currentReadingBook.bookUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline mt-2 inline-block"
+                    >
+                      Open in Google Books →
+                    </a>
+                  </div>
+                )} */}
+                <a
+                  href={currentReadingBook.bookUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
+                >
+                  Open in Google Books
+                </a>
               </div>
             </motion.div>
           </motion.div>
