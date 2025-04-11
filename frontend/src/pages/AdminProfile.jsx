@@ -145,7 +145,7 @@ const AdminProfile = () => {
     if (!error) {
       const reservationsWithUsernames = await Promise.all(
         data.map(async (reservation) => {
-          const { data: userData } = await supabase.from("users").select("name").eq("id", reservation.user_id).single();
+          const { data: userData } = await supabase.from("users").select("*,books()").eq("id", reservation.user_id);
           return { ...reservation, userName: userData?.name || "Unknown" };
         })
       );

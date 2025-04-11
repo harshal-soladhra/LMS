@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { supabase } from "../supabaseClient";
 
 const Enquiry = () => {
   const [formData, setFormData] = useState({
@@ -34,7 +35,7 @@ const Enquiry = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const { firstName, lastName, phone, email, message } = formData;
 
@@ -50,21 +51,27 @@ const Enquiry = () => {
     }
 
     console.log("Enquiry Submitted:", formData);
-    if (formData.attachment) {
-      console.log("Attachment:", formData.attachment.name);
-      const formDataToSend = new FormData();
-      formDataToSend.append("firstName", firstName);
-      formDataToSend.append("lastName", lastName);
-      formDataToSend.append("phone", phone);
-      formDataToSend.append("email", email);
-      formDataToSend.append("message", message);
-      formDataToSend.append("attachment", formData.attachment);
 
-      // Example: Replace with actual API call
-      // fetch('/api/submit', { method: 'POST', body: formDataToSend })
-      //   .then(response => response.json())
-      //   .then(data => console.log(data))
-      //   .catch(error => console.error('Error:', error));
+    // Example: Replace with actual API call
+    // fetch('/api/submit', { method: 'POST', body: formDataToSend })
+    //   .then(response => response.json())
+    //   .then(data => console.log(data))
+    //   .catch(error => console.error('Error:', error));
+    const { data, error: dataerror } = await supabase.from("enquiry").insert({
+      firstName: firstName,
+      lastName: lastName,
+      phone: phone,
+      email: email,
+      message: message,
+      attachment: formData.attachment ? formData.attachment : null,
+    });
+    if (dataerror) {
+      console.error("Error uploading attachment:", dataerror);
+      setError("Failed to upload attachment. Please try again.");
+      return;
+    }
+    else {
+      console.log("Attachment uploaded successfully!", data);
     }
     alert("Thanks for your enquiry! We will get in touch with you shortly.");
     setFormData({ firstName: "", lastName: "", phone: "", email: "", message: "", attachment: null });
