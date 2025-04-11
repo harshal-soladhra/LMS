@@ -67,6 +67,7 @@ const AdminProfile = () => {
   const [editBookPopup, setEditBookPopup] = useState(null); // { id, title, author, isbn, ... }
   const [deleteBooksPopup, setDeleteBooksPopup] = useState(false);
   const [isbnInput, setIsbnInput] = useState("");
+  const [copies, setcopies] = useState(1);
   const [manualBookData, setManualBookData] = useState({
     coverImage: "",
     title: "",
@@ -217,9 +218,10 @@ const AdminProfile = () => {
       alert("Please enter an ISBN number.");
       return;
     }
+    
 
     setLoading(true);
-    const response = await addBook(isbn);
+    const response = await addBook(isbn, copies);
     setLoading(false);
 
     alert(response.message);
@@ -451,6 +453,11 @@ const AdminProfile = () => {
                 placeholder="Enter ISBN Number"
                 className="w-full p-2 border rounded-lg bg-gray-700 text-white mb-4"
               />
+              <input type="number"
+                value={copies}
+                onChange={(e) => setcopies(e.target.value)}
+                placeholder="Enter Number of Copies"
+                className="w-full p-2 border rounded-lg bg-gray-700 text-white mb-4" />
               <div className="flex justify-end gap-2">
                 <button className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-all" onClick={() => setIsbnPopup(false)}>Cancel</button>
                 <button className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all" onClick={handleAddBook}>Add</button>

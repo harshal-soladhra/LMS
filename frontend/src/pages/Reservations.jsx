@@ -101,10 +101,10 @@ const Reservations = () => {
               className="border p-2 rounded-md"
             >
               <option value="">All Statuses</option>
-              <option value="Pending">Pending</option>
-              <option value="Confirmed">Confirmed</option>
-              <option value="Canceled">Canceled</option>
-              <option value="Issued">Completed</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="canceled">Canceled</option>
+              <option value="issued">Completed</option>
             </select>
           </div>
 
