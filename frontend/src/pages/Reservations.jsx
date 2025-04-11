@@ -28,7 +28,7 @@ const Reservations = () => {
       const { data, error } = await supabase
         .from("reservations")
         .select("*, books(title, author, genre)")
-        .eq("user_id", user.id);
+        .eq("reserved_to", user.id);
       if (error) {
         console.error("🔥 Error fetching reservations:", error.message);
       } else {

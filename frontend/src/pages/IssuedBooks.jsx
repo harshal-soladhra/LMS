@@ -21,7 +21,7 @@ const IssuedBooks = () => {
         .from('issued_books')
         .select('*, books(title, author,edition)')
         .eq('returned', false) // optional: filter by status
-        // .eq('user_id', user.id); // optional: get only user's books
+      // .eq('user_id', user.id); // optional: get only user's books
 
       if (error) {
         console.error("Error fetching issued books:", error.message);
@@ -40,21 +40,32 @@ const IssuedBooks = () => {
     setLoading(false);
   };
 
-  const handleReserveBook = async(book) => {
-    console.log(`Reserving book with id ${book}`);
-    const {error: reservationerror} = await supabase
+  const handleReserveBook = async (book) => {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      console.error("🔥 Error fetching user:", userError?.message || "No user found");
+      alert("You must be logged in to issue a book.");
+      navigate("/SignIn");
+      return;
+    }
+    console.log("Reserving book:", book);
+    const { error: reservationerror, data: reservedto } = await supabase
       .from('reservations').insert({
         book_id: book.book_id,
-        user_id: book.user_id,
-        reserved_at: new Date().toISOString(),  
+        reserved_from: book.user_id,
+        reserved_to: user.id,
+        reserved_at: new Date().toISOString(),
       })
     if (reservationerror) {
       console.error("Error reserving book:", reservationerror.message);
       return;
     }
+    else {
+      console.log("Book reserved successfully:", reservedto);
+    }
 
     await supabase
-      .from('issued_books').update({ reserved: true  }).eq('id', book.id);
+      .from('issued_books').update({ reserved: true }).eq('id', book.id);
     setSuccessPopup(true);
     setTimeout(() => setSuccessPopup(false), 2000); // Auto-close after 2 seconds
   };
