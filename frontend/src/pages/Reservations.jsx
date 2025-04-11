@@ -32,6 +32,7 @@ const Reservations = () => {
       if (error) {
         console.error("🔥 Error fetching reservations:", error.message);
       } else {
+        console.log("reservation data: ",data);
         setReservations(data);
       }
       setLoading(false);
@@ -140,7 +141,7 @@ const Reservations = () => {
                       </span>
                     </p>
                     <p className="text-sm text-gray-600">
-                      Reserved On: {new Date(reservation.created_at).toLocaleDateString()}
+                      Reserved On: {new Date(reservation.reserved_at).toLocaleDateString()}
                     </p>
                     {reservation.status !== "Canceled" && (
                       <button
@@ -219,7 +220,7 @@ const Reservations = () => {
                     </p>
                     <p className="text-gray-600 mb-2">
                       <strong>Reserved On:</strong>{" "}
-                      {new Date(selectedReservation.created_at).toLocaleDateString()}
+                      {new Date(selectedReservation.reserved_at).toLocaleDateString()}
                     </p>
                     {selectedReservation.due_date && (
                       <p className="text-gray-600 mb-2">

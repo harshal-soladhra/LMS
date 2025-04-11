@@ -22,32 +22,31 @@ const Books = () => {
   const dueDate = new Date(issueDate);
   dueDate.setDate(dueDate.getDate() + 14);
   // ✅ Fetch User Data & Library Books
-  useEffect(() => {
-    const fetchUserAndLibraryBooks = async () => {
-      const token = localStorage.getItem("supabase_token");
-      if (token) {
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError || !user) {
-          console.error("🔥 Error fetching user:", userError?.message || "No user found");
-          return;
-        }
-        setUser(user);
-      }
 
-      const { data: booksData, error: booksError } = await supabase.from("books").select("*");
-      if (booksError) {
-        console.error("🔥 Error fetching books:", booksError.message);
-      } else {
-        console.log("📚 Books fetched successfully:", booksData);
-        setBooks(booksData);
+  const fetchUserAndLibraryBooks = async () => {
+    const token = localStorage.getItem("supabase_token");
+    if (token) {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error("🔥 Error fetching user:", userError?.message || "No user found");
+        return;
       }
-      setLoading(false);
-    };
-    fetchUserAndLibraryBooks();
-  }, []);
+      setUser(user);
+    }
 
+    const { data: booksData, error: booksError } = await supabase.from("books").select("*");
+    if (booksError) {
+      console.error("🔥 Error fetching books:", booksError.message);
+    } else {
+      console.log("📚 Books fetched successfully:", booksData);
+      setBooks(booksData);
+    }
+    setLoading(false);
+  };
+  
   // ✅ Fetch Books from Open Library API with Pagination
   useEffect(() => {
+    fetchUserAndLibraryBooks();
     const fetchAPIbooks = async () => {
       setLoadingMore(true);
       try {
@@ -130,7 +129,7 @@ const Books = () => {
       ]);
 
       if (error) throw error;
-      const { error: updatecopyerror } = await supabase 
+      const { error: updatecopyerror } = await supabase
         .from("books")
         .update({
           copies: copies - 1,
@@ -144,6 +143,7 @@ const Books = () => {
         },
       ]);
       alert("Book issued successfully!");
+      fetchUserAndLibraryBooks();
     } catch (error) {
       console.error("🔥 Error issuing book:", error.message);
       alert("Failed to issue book.");

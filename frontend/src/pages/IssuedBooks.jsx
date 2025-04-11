@@ -19,8 +19,9 @@ const IssuedBooks = () => {
     try {
       const { data, error } = await supabase
         .from('issued_books')
-        .select('book_id, issue_date, user_id, books(title, author)')
-        .eq('user_id', user.id); // optional: get only user's books
+        .select('*, books(title, author)')
+        .eq('returned', false) // optional: filter by status
+        // .eq('user_id', user.id); // optional: get only user's books
 
       if (error) {
         console.error("Error fetching issued books:", error.message);

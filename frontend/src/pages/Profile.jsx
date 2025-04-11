@@ -10,7 +10,6 @@ import EditProfileModal from "../components/modals/EditProfileModal";
 import BooksPopupModal from "../components/modals/BooksPopupModal";
 import LateFeesModal from "../components/modals/LateFeesModal";
 import PaymentSuccessModal from "../components/modals/PaymentSuccessModal";
-// import PopupModal from "../components/modals/PopupModal";
 
 function Profile() {
     const navigate = useNavigate();

@@ -14,18 +14,20 @@ const AvailableBooks = () => {
   const [selectedBook, setSelectedBook] = useState(null);
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
-
+  const issueDate = new Date();
+  const dueDate = new Date(issueDate);
+  dueDate.setDate(dueDate.getDate() + 14);
   // ✅ Fetch all books (available & unavailable)
+  const fetchBooks = async () => {
+    const { data, error } = await supabase.from("books").select("*");
+    if (error) {
+      console.error("🔥 Error fetching books:", error.message);
+    } else {
+      setBooks(data);
+    }
+    setLoading(false);
+  };
   useEffect(() => {
-    const fetchBooks = async () => {
-      const { data, error } = await supabase.from("books").select("*");
-      if (error) {
-        console.error("🔥 Error fetching books:", error.message);
-      } else {
-        setBooks(data);
-      }
-      setLoading(false);
-    };
     fetchBooks();
   }, []);
 
@@ -54,21 +56,25 @@ const AvailableBooks = () => {
       return;
     }
 
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 14);
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase.from("issued_books").insert([
+        {
+          user_id: user.id,
+          book_id: bookId,
+          issue_date: issueDate.toISOString(),
+          due_date: dueDate.toISOString(),
+        },
+      ]);
+
+      if (error) throw error;
+      const { error: updatecopyerror } = await supabase
         .from("books")
         .update({
-          issued_to: user.id,
-          issued_date: new Date().toISOString(),
-          due_date: dueDate.toISOString(),
           copies: copies - 1,
         })
         .eq("id", bookId);
-
-      if (error) throw error;
+      if (updatecopyerror) throw updatecopyerror;
       await supabase.from("notifications").insert([
         {
           user_id: user.id,
@@ -76,9 +82,9 @@ const AvailableBooks = () => {
         },
       ]);
       alert("Book issued successfully!");
-      window.location.reload();
-    } catch (err) {
-      console.error("🔥 Book Issue Error:", err);
+      fetchBooks(); // Refresh the book list after issuing
+    } catch (error) {
+      console.error("🔥 Error issuing book:", error.message);
       alert("Failed to issue book.");
     }
   };
