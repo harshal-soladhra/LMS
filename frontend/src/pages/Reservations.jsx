@@ -104,6 +104,7 @@ const Reservations = () => {
               <option value="Pending">Pending</option>
               <option value="Confirmed">Confirmed</option>
               <option value="Canceled">Canceled</option>
+              <option value="Issued">Completed</option>
             </select>
           </div>
 

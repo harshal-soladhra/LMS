@@ -159,7 +159,7 @@ const IssuedBooks = () => {
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.95 }}
                       >
-                        Reserve a Book
+                        Reserve Book
                       </motion.button>
                     </div>
                   </motion.div>
