@@ -2,50 +2,6 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../supabaseClient";
 
-// Dummy data for enquiry reviews
-const dummyReviews = [
-  {
-    id: 1,
-    first_name: "John",
-    last_name: "Doe",
-    phone_number: "+1-555-123-4567",
-    email_id: "john.doe@example.com",
-    message: "Interested in advanced programming courses. Can you provide more details?",
-    is_read: false,
-    created_at: "2025-04-10T10:30:00Z",
-  },
-  {
-    id: 2,
-    first_name: "Emma",
-    last_name: "Smith",
-    phone_number: "+1-555-987-6543",
-    email_id: "emma.smith@example.com",
-    message: "The platform is great! Any plans to add video tutorials?",
-    is_read: false,
-    created_at: "2025-04-09T14:45:00Z",
-  },
-  {
-    id: 3,
-    first_name: "Michael",
-    last_name: "Brown",
-    phone_number: "+1-555-456-7890",
-    email_id: "michael.brown@example.com",
-    message: "Having trouble accessing my account. Need help with password reset.",
-    is_read: false,
-    created_at: "2025-04-08T09:15:00Z",
-  },
-  {
-    id: 4,
-    first_name: "Sophie",
-    last_name: "Wilson",
-    phone_number: "+1-555-321-6547",
-    email_id: "sophie.wilson@example.com",
-    message: "Quick response from support team! My issue was resolved promptly.",
-    is_read: true,
-    created_at: "2025-04-07T16:20:00Z",
-  },
-];
-
 const EnquiryReviews = () => {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -57,9 +13,9 @@ const EnquiryReviews = () => {
       try {
         setLoading(true);
         // Simulate Supabase query
-        // const { data, error } = await supabase.from("enquiries").select("*").order("created_at", { ascending: false });
-        // if (error) throw error;
-        setReviews(dummyReviews);
+        const { data, error } = await supabase.from("enquiry").select("*").order("created_at", { ascending: false });
+        if (error) throw error;
+        setReviews(data);
       } catch (err) {
         setError("Failed to load reviews");
         console.error("Error fetching reviews:", err);
@@ -70,18 +26,50 @@ const EnquiryReviews = () => {
 
     fetchReviews();
   }, []);
+  useEffect(() => {
+    // Already fetched initial reviews above
+
+    const channel = supabase
+      .channel("realtime-enquiries")
+      .on(
+        "postgres_changes",
+        {
+          event: ["INSERT", "UPDATE"],
+          schema: "public",
+          table: "enquiry",
+        },
+        (payload) => {
+          console.log("📥 New enquiry received:", payload.new);
+          setReviews((prev) => {
+            const updatedReviews = prev.filter(review => review.id !== payload.new.id);
+            return [payload.new, ...updatedReviews];
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, []);
+
 
   // Handle marking a review as read
   const handleMarkAsRead = async (id) => {
     try {
       // Simulate Supabase update
-      // const { error } = await supabase.from("enquiries").update({ is_read: true }).eq("id", id);
-      // if (error) throw error;
+      const { error } = await supabase.from("enquiry").update({ read_status: true }).eq("id", id);
+      if (error) {
+        console.error("Error updating review:", error);
+        throw error;
+      }
+      console.log("Review marked as read:", id);
 
       setReviews(
-        reviews.map((review) =>
-          review.id === id ? { ...review, is_read: true } : review
-        )
+        reviews.map((review) => {
+          console.log("Review ID:", review.id, "Selected ID:", id); // Debugging line
+          return review.id === id ? { ...review, read_status: true } : review;
+        })
       );
     } catch (err) {
       console.error("Error marking as read:", err);
@@ -108,26 +96,25 @@ const EnquiryReviews = () => {
             {reviews.map((review) => (
               <motion.div
                 key={review.id}
-                className={`p-6 bg-gray-100 shadow-md rounded-lg relative transition-colors duration-300 ${
-                  review.is_read ? "bg-gray-200 opacity-75" : "bg-gray-100"
-                }`}
+                className={`p-6 bg-gray-100 shadow-md rounded-lg relative transition-colors duration-300 ${review.read_status ? "bg-gray-200 opacity-75" : "bg-gray-100"
+                  }`}
                 initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 50 }}
                 transition={{ duration: 0.5 }}
                 whileHover={{ scale: 1.05, boxShadow: "0 5px 15px rgba(0,0,0,0.2)" }}
               >
-                {review.is_read && (
+                {review.read_status && (
                   <span className="absolute top-4 right-4 text-green-500">✓</span>
                 )}
                 <h3 className="font-semibold text-lg">
-                  {review.first_name} {review.last_name}
+                  {review.firstName} {review.lastName}
                 </h3>
                 <p className="text-sm text-gray-600">
-                  <strong>Phone:</strong> {review.phone_number}
+                  <strong>Phone:</strong> {review.phone}
                 </p>
                 <p className="text-sm text-gray-600">
-                  <strong>Email:</strong> {review.email_id}
+                  <strong>Email:</strong> {review.email}
                 </p>
                 <p className="mt-2 p-2 bg-blue-100 text-blue-800 font-medium rounded">
                   {review.message}
@@ -135,14 +122,20 @@ const EnquiryReviews = () => {
                 <p className="text-sm text-gray-500 mt-2">
                   Submitted on: {new Date(review.created_at).toLocaleDateString()}
                 </p>
-                {!review.is_read && (
-                  <button
-                    onClick={() => handleMarkAsRead(review.id)}
-                    className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
-                  >
-                    Mark as Read
-                  </button>
+                {!review.read_status && (
+                  <>
+                    <button
+                      onClick={() => handleMarkAsRead(review.id)}
+                      className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+                    >
+                      Mark as Read
+                    </button>
+                    <span className="absolute top-4 right-4 bg-yellow-300 text-black px-2 py-1 text-xs font-semibold rounded">
+                      NEW
+                    </span>
+                  </>
                 )}
+
               </motion.div>
             ))}
           </AnimatePresence>
