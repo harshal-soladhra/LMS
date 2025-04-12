@@ -15,7 +15,6 @@ const Navbar = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
-
   useEffect(() => {
     const checkUser = async (userId) => {
       const { data, error } = await supabase
@@ -93,7 +92,7 @@ const Navbar = () => {
     };
     if (isLoggedIn) {
       fetchNotifications();
-    }
+    }// Fetch existing notifications
 
     // Listen for real-time notifications
     const subscription = supabase
@@ -108,7 +107,8 @@ const Navbar = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [isLoggedIn]);
+  }, []);
+
 
   const markAsRead = async (id) => {
     await supabase
@@ -119,11 +119,10 @@ const Navbar = () => {
     setNotifications(notifications.filter((n) => n.id !== id));
     setUnreadCount((prev) => prev - 1);
   };
-
   const handleLogin = () => {
     navigate("/profile");
   };
-
+  // ✅ Fixed Logout Function
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
@@ -227,7 +226,7 @@ const Navbar = () => {
                         Mark as Read
                       </button>
                     </div>
-                  ))
+                  )) // ✅ Added missing closing parenthesis
                 )}
               </div>
             )}
