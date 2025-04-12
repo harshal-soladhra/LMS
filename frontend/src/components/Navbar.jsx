@@ -148,7 +148,7 @@ const Navbar = () => {
             { path: "/books", label: "Books" },
             { path: "/profile", label: "Profile" },
             {
-              path: isAdmin ? "/EnquiryReviews" : "/Enquiry",
+              path: isAdmin ? "/enquiry-reviews" : "/Enquiry",
               label: isAdmin ? "EnquiryReviews" : "Enquiry",
             },
           ].map((item) => (
