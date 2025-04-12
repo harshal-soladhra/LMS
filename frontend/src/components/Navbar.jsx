@@ -16,45 +16,39 @@ const Navbar = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
 
-  // Check authentication and role on mount
   useEffect(() => {
-    const checkUser = async () => {
+    const checkUser = async (userId) => {
+      const { data, error } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", userId)
+        .single();
+
+      if (error) {
+        console.error("❌ Error fetching user role:", error);
+        setIsLoggedIn(false);
+        setIsAdmin(false);
+      } else {
+        setIsLoggedIn(true);
+        setIsAdmin(data?.role === "admin");
+      }
+    };
+
+    const getSession = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        setIsLoggedIn(true);
-        // Fetch user role from users table
-        const { data, error } = await supabase
-          .from("users")
-          .select("role")
-          .eq("id", user.id)
-          .single();
-        if (error) {
-          console.error("❌ Error fetching user role:", error);
-        } else {
-          setIsAdmin(data?.role === "admin");
-        }
+        await checkUser(user.id);
       } else {
         setIsLoggedIn(false);
         setIsAdmin(false);
       }
     };
-    checkUser();
 
-    // Listen for auth state changes
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+    getSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
-        setIsLoggedIn(true);
-        // Fetch user role on auth state change
-        const { data, error } = await supabase
-          .from("users")
-          .select("role")
-          .eq("id", session.user.id)
-          .single();
-        if (error) {
-          console.error("❌ Error fetching user role:", error);
-        } else {
-          setIsAdmin(data?.role === "admin");
-        }
+        checkUser(session.user.id);
       } else {
         setIsLoggedIn(false);
         setIsAdmin(false);
@@ -62,7 +56,7 @@ const Navbar = () => {
     });
 
     return () => {
-      authListener.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
@@ -80,16 +74,16 @@ const Navbar = () => {
         console.error("❌ Error fetching user:", userError);
         return;
       }
-  
+
       const userId = user.user.id;
-  
+
       const { data, error } = await supabase
         .from("notifications")
         .select("*")
         .eq("user_id", userId)
         .eq("is_read", false)
         .order("created_at", { ascending: false });
-  
+
       if (error) {
         console.error("🔥 Error fetching notifications:", error);
       } else {
@@ -97,24 +91,23 @@ const Navbar = () => {
         setUnreadCount(data.length);
       }
     };
-  
     if (isLoggedIn) {
       fetchNotifications();
-  
-      // Listen for real-time notifications
-      const subscription = supabase
-        .channel("notifications")
-        .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, (payload) => {
-          console.log("📩 New Notification:", payload.new);
-          setNotifications((prev) => [payload.new, ...prev]);
-          setUnreadCount((prev) => prev + 1);
-        })
-        .subscribe();
-  
-      return () => {
-        subscription.unsubscribe();
-      };
     }
+
+    // Listen for real-time notifications
+    const subscription = supabase
+      .channel("notifications")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, (payload) => {
+        console.log("📩 New Notification:", payload.new);
+        setNotifications((prev) => [payload.new, ...prev]);
+        setUnreadCount((prev) => prev + 1);
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [isLoggedIn]);
 
   const markAsRead = async (id) => {
@@ -234,7 +227,7 @@ const Navbar = () => {
                         Mark as Read
                       </button>
                     </div>
-                  )) // ✅ Added missing closing parenthesis
+                  ))
                 )}
               </div>
             )}
