@@ -6,11 +6,6 @@ import { supabase } from "../supabaseClient";
 import { addBook } from "../api";
 
 // Dummy data for admin features
-const dummyUsers = [
-  { id: 1, name: "John Doe", email: "john@example.com", role: "member" },
-  { id: 2, name: "Jane Smith", email: "jane@example.com", role: "librarian" },
-  { id: 3, name: "Admin User", email: "admin@example.com", role: "admin" },
-];
 
 const dummyBookRequests = [
   { id: 1, userName: "John Doe", bookName: "Dune", status: "pending" },
@@ -107,49 +102,38 @@ const AdminProfile = () => {
 
   const fetchAllUsers = async () => {
     const { data, error } = await supabase.from("users").select("id, name, email, role");
-    if (!error) setAllUsers(data || dummyUsers);
+    if (!error) setAllUsers(data);
   };
 
   const fetchBookRequests = async () => {
-    const { data, error } = await supabase.from("book_requests").select("id, user_id, book_name, status");
+    const { data, error } = await supabase.from("book_requests").select("*, users(name)").eq("status", "pending");
     if (!error) {
-      const requestsWithUsernames = await Promise.all(
-        data.map(async (request) => {
-          const { data: userData } = await supabase.from("users").select("name").eq("id", request.user_id).single();
-          return { ...request, userName: userData?.name || "Unknown" };
-        })
-      );
-      setBookRequests(requestsWithUsernames || dummyBookRequests);
+      setBookRequests(data || dummyBookRequests);
+      console.log("bookrequest data:", data)
     } else {
+      console.log("book request error:", error);
       setBookRequests(dummyBookRequests);
     }
   };
 
   const fetchReturnRequests = async () => {
-    const { data, error } = await supabase.from("return_requests").select("id, user_id, book_name, status, late_fee");
+    const { data, error } = await supabase.from("issued_books").select("*, books(title),users(name)").eq("return_request", "pending");
     if (!error) {
-      const requestsWithUsernames = await Promise.all(
-        data.map(async (request) => {
-          const { data: userData } = await supabase.from("users").select("name").eq("id", request.user_id).single();
-          return { ...request, userName: userData?.name || "Unknown", lateFee: request.late_fee || 0 };
-        })
-      );
-      setReturnRequests(requestsWithUsernames || dummyReturnRequests);
+      console.log("requestsWithUsernames:", data);
+      setReturnRequests(data || dummyReturnRequests);
     } else {
+      console.log("return request error:", error);
       setReturnRequests(dummyReturnRequests);
     }
   };
 
   const fetchReservations = async () => {
-    const { data, error } = await supabase.from("reservations").select("id, user_id, book_id, status");
+    const { data, error } = await supabase.from("reservations")
+      .select(`*,reserved_from_user:users!reserved_to(name), books(title)`)
+      .eq("status", "pending");
     if (!error) {
-      const reservationsWithUsernames = await Promise.all(
-        data.map(async (reservation) => {
-          const { data: userData } = await supabase.from("users").select("*,books()").eq("id", reservation.user_id);
-          return { ...reservation, userName: userData?.name || "Unknown" };
-        })
-      );
-      setReservations(reservationsWithUsernames || dummyReservations);
+      console.log("reservationsWithUsernames:", data);
+      setReservations(data || dummyReservations);
     } else {
       setReservations(dummyReservations);
     }
@@ -218,7 +202,7 @@ const AdminProfile = () => {
       alert("Please enter an ISBN number.");
       return;
     }
-    
+
 
     setLoading(true);
     const response = await addBook(isbn, copies);
@@ -587,7 +571,7 @@ const AdminProfile = () => {
                 <div className="flex justify-between p-3 bg-blue-600 rounded-lg font-semibold"><span className="w-1/4">User</span><span className="w-1/4 text-center">Book Name</span><span className="w-1/4 text-center">Status</span><span className="w-1/4 text-right">Action</span></div>
                 {bookRequests.length > 0 ? bookRequests.map((request, index) => (
                   <motion.div key={index} className="flex justify-between p-3 bg-gray-700 rounded-lg" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
-                    <span className="w-1/4">{request.userName}</span><span className="w-1/4 text-center">{request.bookName}</span><span className="w-1/4 text-center capitalize">{request.status}</span>
+                    <span className="w-1/4">{request.users.name}</span><span className="w-1/4 text-center">{request.title}</span><span className="w-1/4 text-center capitalize">{request.status}</span>
                     <span className="w-1/4 text-right flex gap-2 justify-end">
                       {request.status === "pending" && (
                         <>
@@ -617,9 +601,9 @@ const AdminProfile = () => {
                 </div>
                 {returnRequests.length > 0 ? returnRequests.map((request, index) => (
                   <motion.div key={index} className="flex justify-between p-3 bg-gray-700 rounded-lg" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
-                    <span className="w-1/5">{request.userName}</span><span className="w-1/5 text-center">{request.bookName}</span><span className="w-1/5 text-center capitalize">{request.status}</span><span className="w-1/5 text-center">${request.lateFee}</span>
+                    <span className="w-1/5">{request.users.name}</span><span className="w-1/5 text-center">{request.books.title}</span><span className="w-1/5 text-center capitalize">{request.return_request}</span><span className="w-1/5 text-center">${request.lateFees}</span>
                     <span className="w-1/5 text-right flex gap-2 justify-end">
-                      {request.status === "pending" && (
+                      {request.return_request === "pending" && (
                         <>
                           <button className="bg-green-500 text-white px-2 py-1 rounded-lg hover:bg-green-600 transition-all" onClick={() => handleApproveReturn(request.id)}>Approve</button>
                           <button className="bg-red-500 text-white px-2 py-1 rounded-lg hover:bg-red-600 transition-all" onClick={() => handleRejectReturn(request.id)}>Reject</button>
@@ -647,12 +631,12 @@ const AdminProfile = () => {
                 </div>
                 {reservations.length > 0 ? reservations.map((reservation, index) => (
                   <motion.div key={index} className="flex justify-between p-3 bg-gray-700 rounded-lg" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
-                    <span className="w-1/4">{reservation.userName}</span><span className="w-1/4 text-center">{reservation.bookName}</span><span className="w-1/4 text-center capitalize">{reservation.status}</span>
+                    <span className="w-1/4">{reservation.reserved_from_user.name}</span><span className="w-1/4 text-center">{reservation.books.title}</span><span className="w-1/4 text-center capitalize">{reservation.status}</span>
                     <span className="w-1/4 text-right flex gap-2 justify-end">
                       {reservation.status === "pending" && (
                         <>
                           <button className="bg-green-500 text-white px-2 py-1 rounded-lg hover:bg-green-600 transition-all" onClick={() => handleApproveReservation(reservation.id)}>Approve</button>
-                          <button className="bg-red-500 text-white px-2 py-1 rounded-lg hover:bg-red-600 transition-all" onClick={() => handleRejectReservation(reservation.id)}>Reject</button>
+                          <button className="bg-red-500 text-white px-2 py-1 rounded  -lg hover:bg-red-600 transition-all" onClick={() => handleRejectReservation(reservation.id)}>Reject</button>
                         </>
                       )}
                     </span>
