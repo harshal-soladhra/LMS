@@ -1,7 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js';
 import { Doughnut, Bar } from 'react-chartjs-2';
-import { BookOpenIcon, LibraryIcon, ArrowUpIcon, PlusIcon } from '@heroicons/react/outline';
+// import { BookOpenIcon, LibraryIcon, ArrowUpIcon, PlusIcon } from '@heroicons/react/outline';
+import {
+  BookOpenIcon,
+  BuildingLibraryIcon, // Replaces `LibraryIcon` in v2
+  ArrowUpIcon,
+  PlusIcon
+} from '@heroicons/react/24/outline';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from "react-router-dom";
 
@@ -111,7 +118,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
         {[
           { title: 'Total Books', value: '1,245', icon: BookOpenIcon, color: 'blue-400', tooltip: 'Total books in collection' },
-          { title: 'Available Books', value: '892', icon: LibraryIcon, color: 'blue-500', tooltip: 'Books ready to borrow' },
+          { title: 'Available Books', value: '892', icon: BuildingLibraryIcon, color: 'blue-500', tooltip: 'Books ready to borrow' },
           { title: 'Borrowed Books', value: '353', icon: ArrowUpIcon, color: 'blue-600', tooltip: 'Books currently borrowed' },
           { title: 'New Books', value: '45', icon: PlusIcon, color: 'blue-700', tooltip: 'New additions this month' },
         ].map((item, index) => (
