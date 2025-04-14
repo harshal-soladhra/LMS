@@ -12,7 +12,7 @@ import { FaTimes } from "react-icons/fa"; // For cancel symbol
 const Main = () => {
   const [showModal, setShowModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [books, setBooks] = useState([]);
+  const [books,   ] = useState([]);
   const [filteredBooks, setFilteredBooks] = useState([]);
   const [show2025Popup, setShow2025Popup] = useState(false);
   const [show2024Popup, setShow2024Popup] = useState(false);

@@ -5,6 +5,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../supabaseClient";
 import { addBook } from "../api";
 import ReservationActionModal from "../components/modals/ReservationActionModal";
+import BookRequestActionModal from "../components/modals/BookRequestActionModal";
+import ReturnApprovalModal from "../components/modals/ReturnApprovalModal";
+
 
 // Dummy data for admin features
 
@@ -41,6 +44,8 @@ const AdminProfile = () => {
   const [copies, setCopies] = useState(1);
   const [selectedReservation, setSelectedReservation] = useState(null);
   // const [successPopup, setSuccessPopup] = useState(null);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [selectedReturn, setSelectedReturn] = useState(null);
 
   const [manualBookData, setManualBookData] = useState({
     coverImage: "",
@@ -121,12 +126,6 @@ const AdminProfile = () => {
   const fetchTransactions = async () => {
     const { data, error } = await supabase.from("transactions").select("*,users(name),books(title)");
     if (!error) {
-      const transactionsWithUsernames = await Promise.all(
-        data.map(async (transaction) => {
-          const { data: userData } = await supabase.from("users").select("name");
-          return { ...transaction, userName: userData?.name || "Unknown", lateFee: transaction.late_fee || 0 };
-        })
-      );
       setTransactions(data);
     } else {
       setTransactions([]);
@@ -305,7 +304,7 @@ const AdminProfile = () => {
 
 
   const calculateTotalFee = () => {
-    return transactions.reduce((total, transaction) => total + (transaction.lateFee || 0), 0);
+    return transactions.reduce((total, transaction) => total + (transaction.lateFees || 0), 0);
   };
 
   if (loading) return <p>Loading profile...</p>;
@@ -633,6 +632,7 @@ const AdminProfile = () => {
                 )) : <p className="text-gray-400">No return requests found</p>}
               </div>
               <button className="mt-4 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all w-full" onClick={() => setReturnRequestsPopup(false)}>Close</button>
+
             </motion.div>
           </>
         )}
