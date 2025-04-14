@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js';
 import { Doughnut, Bar } from 'react-chartjs-2';
+import { supabase } from '../supabaseClient'; // Adjust the import path as necessary
 // import { BookOpenIcon, LibraryIcon, ArrowUpIcon, PlusIcon } from '@heroicons/react/outline';
 import {
   BookOpenIcon,
@@ -18,6 +19,90 @@ ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Le
 const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
+  const [stats, setStats] = useState({
+    totalBooks: 0,
+    availableBooks: 0,
+    borrowedBooks: 0,
+    newBooks: 0,
+    overdueBooks: 0,
+    activeMembers: 0,
+    totalFines: 0,
+    totalCopiesAvailable: 0,
+  });
+  useEffect(() => {
+    const fetchDashboardStats = async () => {
+      try {
+        // Total Books
+        const { count: totalBooks } = await supabase
+          .from("books")
+          .select("*", { count: "exact", head: true });
+        console.log("Total Books:", totalBooks);
+        // Available Books (copies > 0)
+        const { count: availableBooks } = await supabase
+          .from("books")
+          .select("*", { count: "exact", head: true })
+          .gt("copies", 0);
+        console.log("Available Books:", availableBooks);
+
+        // Borrowed Books (issued_books where returned is false)
+        const { count: borrowedBooks } = await supabase
+          .from("issued_books")
+          .select("*", { count: "exact", head: true })
+          .eq("returned", false);
+        console.log("Borrowed Books:", borrowedBooks);
+
+        // New Books (added in the last 30 days)
+        const lastMonth = new Date();
+        lastMonth.setDate(lastMonth.getDate() - 30);
+        const { count: newBooks } = await supabase
+          .from("books")
+          .select("*", { count: "exact", head: true })
+          .gte("created_at", lastMonth.toISOString());
+        console.log("New Books:", newBooks);
+        // Overdue Books (due_date < today and returned is false)
+        const today = new Date().toISOString();
+        const { count: overdueBooks } = await supabase
+          .from("issued_books")
+          .select("*", { count: "exact", head: true })
+          .lt("due_date", today)
+          .eq("returned", false);
+        console.log("Overdue Books:", overdueBooks);
+        // Active Members (users table, role === "user")
+        const { count: activeMembers } = await supabase
+          .from("users")
+          .select("*", { count: "exact", head: true })
+          .eq("role", "member");
+        console.log("Active Members:", activeMembers);
+        // Total fines collected (sum of fine_amount from transactions)
+        const { data: transactions } = await supabase
+          .from("transactions")
+          .select("fine_amount");
+        console.log("Transactions:", transactions);
+        const totalFines = transactions?.reduce((sum, t) => sum + (t.fine_amount || 0), 0) || 0;
+        console.log("Total Fines:", totalFines);
+        // Total copies available (sum of copies > 0)
+        const { data: allBooks } = await supabase
+          .from("books")
+          .select("copies");
+
+        const totalCopiesAvailable = allBooks?.reduce((sum, book) => sum + (book.copies || 0), 0) || 0;
+        setStats({
+          totalBooks,
+          availableBooks,
+          borrowedBooks,
+          newBooks,
+          overdueBooks,
+          activeMembers,
+          totalFines,
+          totalCopiesAvailable,
+        });
+      } catch (error) {
+        console.error("Error fetching dashboard stats:", error.message);
+      }
+    };
+
+    fetchDashboardStats();
+  }, []);
 
 
   // Chart data and options
@@ -117,10 +202,10 @@ const Dashboard = () => {
       {/* Dashboard Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
         {[
-          { title: 'Total Books', value: '1,245', icon: BookOpenIcon, color: 'blue-400', tooltip: 'Total books in collection' },
-          { title: 'Available Books', value: '892', icon: BuildingLibraryIcon, color: 'blue-500', tooltip: 'Books ready to borrow' },
-          { title: 'Borrowed Books', value: '353', icon: ArrowUpIcon, color: 'blue-600', tooltip: 'Books currently borrowed' },
-          { title: 'New Books', value: '45', icon: PlusIcon, color: 'blue-700', tooltip: 'New additions this month' },
+          { title: 'Total Books', value: stats.totalBooks, icon: BookOpenIcon, color: 'blue-400', tooltip: 'Total books in collection' },
+          { title: 'Available Books', value: stats.availableBooks, icon: BuildingLibraryIcon, color: 'blue-500', tooltip: 'Books ready to borrow' },
+          { title: 'Borrowed Books', value: stats.borrowedBooks, icon: ArrowUpIcon, color: 'blue-600', tooltip: 'Books currently borrowed' },
+          { title: 'New Books', value: stats.newBooks, icon: PlusIcon, color: 'blue-700', tooltip: 'New additions this month' },
         ].map((item, index) => (
           <motion.div
             key={item.title}
@@ -182,9 +267,12 @@ const Dashboard = () => {
         >
           <h2 className="text-xl font-semibold text-blue-800 text-center mb-4">Quick Stats</h2>
           <div className="flex flex-col gap-4 flex-grow">
-            <div className="text-gray-600">Overdue Books: <span className="font-bold text-blue-600">12</span></div>
-            <div className="text-gray-600">Active Members: <span className="font-bold text-blue-600">287</span></div>
-            <div className="text-gray-600">Fines Collected: <span className="font-bold text-blue-600">$45.50</span></div>
+            <div className="text-gray-600">Overdue Books: <span className="font-bold text-blue-600">{stats.overdueBooks}</span></div>
+            <div className="text-gray-600">
+              Total Copies Available: <span className="font-bold text-blue-600">{stats.totalCopiesAvailable}</span>
+            </div>
+            <div className="text-gray-600">Active Members: <span className="font-bold text-blue-600">{stats.activeMembers}</span></div>
+            <div className="text-gray-600">Fines Collected: <span className="font-bold text-blue-600">${stats.totalFines.toFixed(2)}</span></div>
           </div>
           <button
             onClick={manageOverdues}
