@@ -60,7 +60,7 @@ const Main = () => {
       // Replace with real API call, e.g., Google Books API
       const dummyData2025 = [
         { id: 1, title: "Future Worlds", author: "A. Smith", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL1W" },
-        { id: 2, title: "Tech Odyssey", author: "B. Jones", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL2W" },
+        { id: 2, title: "Intermezzo", author: "Sally Rooney", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL2W" },
         { id: 3, title: "Quantum Leap", author: "C. Lee", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL3W" },
         { id: 4, title: "AI Revolution", author: "D. Kim", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL4W" },
         { id: 5, title: "Space Chronicles", author: "E. Brown", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL5W" },
