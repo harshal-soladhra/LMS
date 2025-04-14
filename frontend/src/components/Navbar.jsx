@@ -145,12 +145,14 @@ const Navbar = () => {
         <ul className="hidden md:flex space-x-6 text-lg gap-4 font-bold">
           {[
             { path: "/", label: "Home" },
-            { path: "/books", label: "Books" },
-            { path: "/profile", label: "Profile" },
+            { path: isAdmin ? "/dashboard" : "/books",
+              label: isAdmin ? "Dashboard" : "Books"
+             },
             {
               path: isAdmin ? "/enquiry-reviews" : "/Enquiry",
               label: isAdmin ? "EnquiryReviews" : "Enquiry",
             },
+            { path: "/profile", label: "Profile" },
           ].map((item) => (
             <li key={item.path}>
               <Link
