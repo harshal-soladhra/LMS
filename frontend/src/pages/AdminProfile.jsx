@@ -4,33 +4,9 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../supabaseClient";
 import { addBook } from "../api";
+import ReservationActionModal from "../components/modals/ReservationActionModal";
 
 // Dummy data for admin features
-
-const dummyBookRequests = [
-  { id: 1, userName: "John Doe", bookName: "Dune", status: "pending" },
-  { id: 2, userName: "Jane Smith", bookName: "The Alchemist", status: "pending" },
-];
-
-const dummyReturnRequests = [
-  { id: 1, userName: "John Doe", bookName: "Dune", status: "pending", lateFee: 10 },
-  { id: 2, userName: "Jane Smith", bookName: "The Alchemist", status: "pending", lateFee: 5 },
-];
-
-const dummyReservations = [
-  { id: 1, userName: "John Doe", bookName: "1984", status: "pending" },
-  { id: 2, userName: "Jane Smith", bookName: "To Kill a Mockingbird", status: "pending" },
-];
-
-const dummyTransactions = [
-  { id: 1, userName: "John Doe", bookName: "Dune", status: "completed", lateFee: 10 },
-  { id: 2, userName: "Jane Smith", bookName: "The Alchemist", status: "completed", lateFee: 5 },
-];
-
-const dummyBooks = [
-  { id: 1, title: "Dune", author: "Frank Herbert", isbn: "978-0441172719" },
-  { id: 2, title: "The Alchemist", author: "Paulo Coelho", isbn: "978-0062315007" },
-];
 
 const AdminProfile = () => {
   const navigate = useNavigate();
@@ -54,15 +30,18 @@ const AdminProfile = () => {
   const [commentPopup, setCommentPopup] = useState(null); // { id, action }
   const [commentText, setCommentText] = useState("");
   const [successPopup, setSuccessPopup] = useState(false);
-  const [books, setBooks] = useState(dummyBooks);
+  const [books, setBooks] = useState([]);
   const [addBooksPopup, setAddBooksPopup] = useState(false);
   const [isbnPopup, setIsbnPopup] = useState(false);
   const [manualAddPopup, setManualAddPopup] = useState(false);
   const [modifyBooksPopup, setModifyBooksPopup] = useState(false);
   const [editBookPopup, setEditBookPopup] = useState(null); // { id, title, author, isbn, ... }
   const [deleteBooksPopup, setDeleteBooksPopup] = useState(false);
-  const [isbnInput, setIsbnInput] = useState("");
-  const [copies, setcopies] = useState(1);
+  // const [isbnInput, setIsbnInput] = useState("");
+  const [copies, setCopies] = useState(1);
+  const [selectedReservation, setSelectedReservation] = useState(null);
+  // const [successPopup, setSuccessPopup] = useState(null);
+
   const [manualBookData, setManualBookData] = useState({
     coverImage: "",
     title: "",
@@ -71,7 +50,7 @@ const AdminProfile = () => {
     isbn: "",
     addition: "",
     language: "",
-    copies: ""
+    copies: copies
   });
 
   useEffect(() => {
@@ -108,22 +87,22 @@ const AdminProfile = () => {
   const fetchBookRequests = async () => {
     const { data, error } = await supabase.from("book_requests").select("*, users(name)").eq("status", "pending");
     if (!error) {
-      setBookRequests(data || dummyBookRequests);
+      setBookRequests(data);
       console.log("bookrequest data:", data)
     } else {
       console.log("book request error:", error);
-      setBookRequests(dummyBookRequests);
+      setBookRequests([]);
     }
   };
 
   const fetchReturnRequests = async () => {
     const { data, error } = await supabase.from("issued_books").select("*, books(title),users(name)").eq("return_request", "pending");
     if (!error) {
-      console.log("requestsWithUsernames:", data);
-      setReturnRequests(data || dummyReturnRequests);
+      // console.log("requestsWithUsernames:", data);
+      setReturnRequests(data);
     } else {
       console.log("return request error:", error);
-      setReturnRequests(dummyReturnRequests);
+      setReturnRequests([]);
     }
   };
 
@@ -133,24 +112,24 @@ const AdminProfile = () => {
       .eq("status", "pending");
     if (!error) {
       console.log("reservationsWithUsernames:", data);
-      setReservations(data || dummyReservations);
+      setReservations(data);
     } else {
-      setReservations(dummyReservations);
+      setReservations([]);
     }
   };
 
   const fetchTransactions = async () => {
-    const { data, error } = await supabase.from("transactions").select("id, user_id, book_name, status, late_fee");
+    const { data, error } = await supabase.from("transactions").select("*,users(name),books(title)");
     if (!error) {
       const transactionsWithUsernames = await Promise.all(
         data.map(async (transaction) => {
-          const { data: userData } = await supabase.from("users").select("name").eq("id", transaction.user_id).single();
+          const { data: userData } = await supabase.from("users").select("name");
           return { ...transaction, userName: userData?.name || "Unknown", lateFee: transaction.late_fee || 0 };
         })
       );
-      setTransactions(transactionsWithUsernames || dummyTransactions);
+      setTransactions(data);
     } else {
-      setTransactions(dummyTransactions);
+      setTransactions([]);
     }
   };
 
@@ -214,37 +193,37 @@ const AdminProfile = () => {
     }
   };
 
-  const handlemanualsubmit = async () => {
-    if (!manualBookData.title || !manualBookData.author || !manualBookData.publicationDate || !manualBookData.copies) {
-      alert("Please fill in all required fields.");
-      return;
-    }
-    const book = {
-      title: manualBookData.title || "Unknown",
-      author: manualBookData.authors ? manualBookData.authors.join(", ") : "Unknown",
-      isbn: isbn,
-      genre: manualBookData.categories ? manualBookData.categories[0] : "Unknown",
-      language: manualBookData.language || "Unknown",
-      edition: manualBookData.publicationDate || "Unknown",
-      copies: manualBookData.copies || 1 // Default to 1 copy
-    };
-    const { data, error } = await supabase.from("books").insert([book]);
-    if (error) throw error;
-    setSuccessPopup("Book successfully added!");
-    setTimeout(() => navigate("/profile"), 1000);
-  };
+  // const handlemanualsubmit = async () => {
+  //   if (!manualBookData.title || !manualBookData.author || !manualBookData.publicationDate || !manualBookData.copies) {
+  //     alert("Please fill in all required fields.");
+  //     return;
+  //   }
+  //   const book = {
+  //     title: manualBookData.title || "Unknown",
+  //     author: manualBookData.authors ? manualBookData.authors.join(", ") : "Unknown",
+  //     isbn: isbn,
+  //     genre: manualBookData.categories ? manualBookData.categories[0] : "Unknown",
+  //     language: manualBookData.language || "Unknown",
+  //     edition: manualBookData.publicationDate || "Unknown",
+  //     copies: manualBookData.copies || 1 // Default to 1 copy
+  //   };
+  //   const { data, error } = await supabase.from("books").insert([book]);
+  //   if (error) throw error;
+  //   setSuccessPopup("Book successfully added!");
+  //   setTimeout(() => navigate("/profile"), 1000);
+  // };
 
-  const handleAddBookByIsbn = async () => {
-    if (!isbnInput) return;
-    const newBook = { id: Date.now(), title: `Book_${isbnInput}`, author: "Unknown", isbn: isbnInput };
-    setBooks([...books, newBook]);
-    setIsbnPopup(false);
-    setAddBooksPopup(false);
-    setManageBooksPopup(false);
-    setIsbnInput("");
-    setSuccessPopup("Book successfully added!");
-    setTimeout(() => navigate("/profile"), 1000);
-  };
+  // const handleAddBookByIsbn = async () => {
+  //   if (!isbnInput) return;
+  //   const newBook = { id: Date.now(), title: `Book_${isbnInput}`, author: "Unknown", isbn: isbnInput };
+  //   setBooks([...books, newBook]);
+  //   setIsbnPopup(false);
+  //   setAddBooksPopup(false);
+  //   setManageBooksPopup(false);
+  //   setIsbnInput("");
+  //   setSuccessPopup("Book successfully added!");
+  //   setTimeout(() => navigate("/profile"), 1000);
+  // };
 
   const handleManualAddSubmit = async () => {
     if (!manualBookData.title || !manualBookData.author || !manualBookData.publicationDate || !manualBookData.copies) {
@@ -267,23 +246,63 @@ const AdminProfile = () => {
     setSuccessPopup("Book successfully added!");
     setTimeout(() => navigate("/profile"), 1000);
   };
+  const fetchBooks = async () => {
+    const { data, error } = await supabase.from("books").select("*");
+    if (!error) setBooks(data);
+  };
 
   const handleEditBook = (book) => {
     setEditBookPopup(book);
   };
 
   const handleModifyBookSubmit = async () => {
-    setBooks(books.map(book => book.id === editBookPopup.id ? { ...editBookPopup } : book));
-    setEditBookPopup(null);
-    setModifyBooksPopup(false);
-    setManageBooksPopup(false);
-    setSuccessPopup("Book successfully modified!");
-    setTimeout(() => navigate("/profile"), 1000);
+    try {
+      // 🔁 Update the book in Supabase
+      const { error } = await supabase
+        .from("books")
+        .update(editBookPopup)
+        .eq("id", editBookPopup.id);
+
+      if (error) {
+        console.error("❌ Error updating book:", error.message);
+        return;
+      }
+
+      // ✅ Update frontend state
+      setBooks(books.map(book => book.id === editBookPopup.id ? { ...editBookPopup } : book));
+      setEditBookPopup(null);
+      setModifyBooksPopup(false);
+      setManageBooksPopup(false);
+      setSuccessPopup("Book successfully modified!");
+
+      fetchBooks();
+      setTimeout(() => navigate("/profile"), 1000);
+    } catch (err) {
+      console.error("❌ Unexpected error updating book:", err);
+    }
   };
 
-  const handleDeleteBook = (bookId) => {
-    setBooks(books.filter(book => book.id !== bookId));
+
+  const handleDeleteBook = async (bookId) => {
+    try {
+      const { error } = await supabase
+        .from("books")
+        .delete()
+        .eq("id", bookId);
+
+      if (error) {
+        console.error("❌ Error deleting book:", error.message);
+        return;
+      }
+
+      setBooks(books.filter(book => book.id !== bookId));
+      setSuccessPopup("Book successfully deleted!");
+    } catch (err) {
+      console.error("❌ Unexpected error deleting book:", err);
+    }
+    fetchBooks();
   };
+
 
   const calculateTotalFee = () => {
     return transactions.reduce((total, transaction) => total + (transaction.lateFee || 0), 0);
@@ -439,7 +458,7 @@ const AdminProfile = () => {
               />
               <input type="number"
                 value={copies}
-                onChange={(e) => setcopies(e.target.value)}
+                onChange={(e) => setCopies(e.target.value)}
                 placeholder="Enter Number of Copies"
                 className="w-full p-2 border rounded-lg bg-gray-700 text-white mb-4" />
               <div className="flex justify-end gap-2">
@@ -633,11 +652,19 @@ const AdminProfile = () => {
                   <motion.div key={index} className="flex justify-between p-3 bg-gray-700 rounded-lg" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
                     <span className="w-1/4">{reservation.reserved_from_user.name}</span><span className="w-1/4 text-center">{reservation.books.title}</span><span className="w-1/4 text-center capitalize">{reservation.status}</span>
                     <span className="w-1/4 text-right flex gap-2 justify-end">
-                      {reservation.status === "pending" && (
+                      {/* {reservation.status === "pending" && (
                         <>
                           <button className="bg-green-500 text-white px-2 py-1 rounded-lg hover:bg-green-600 transition-all" onClick={() => handleApproveReservation(reservation.id)}>Approve</button>
                           <button className="bg-red-500 text-white px-2 py-1 rounded  -lg hover:bg-red-600 transition-all" onClick={() => handleRejectReservation(reservation.id)}>Reject</button>
                         </>
+                      )} */}
+                      {reservation.status === "pending" && (
+                        <button
+                          className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600"
+                          onClick={() => setSelectedReservation(reservation)}
+                        >
+                          Take Action
+                        </button>
                       )}
                     </span>
                   </motion.div>
@@ -645,6 +672,12 @@ const AdminProfile = () => {
               </div>
               <button className="mt-4 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all w-full" onClick={() => setReservationsPopup(false)}>Close</button>
             </motion.div>
+            <ReservationActionModal
+              reservation={selectedReservation}
+              onClose={() => setSelectedReservation(null)}
+              onSuccess={(msg) => setSuccessPopup(msg)}
+              setReservations={setReservations}
+            />
           </>
         )}
       </AnimatePresence>
@@ -659,17 +692,15 @@ const AdminProfile = () => {
                 <div className="flex justify-between p-3 bg-blue-600 rounded-lg font-semibold">
                   <span className="w-1/5">User</span>
                   <span className="w-1/5 text-center">Book Name</span>
-                  <span className="w-1/5 text-center">Status</span>
-                  <span className="w-1/5 text-center">Late Fee</span>
+                  <span className="w-1/5 text-center">Remark</span>
                   <span className="w-1/5 text-center">Total Fee</span>
                 </div>
                 {transactions.length > 0 ? transactions.map((transaction, index) => (
                   <motion.div key={index} className="flex justify-between p-3 bg-gray-700 rounded-lg" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
-                    <span className="w-1/5">{transaction.userName}</span>
-                    <span className="w-1/5 text-center">{transaction.bookName}</span>
-                    <span className="w-1/5 text-center capitalize">{transaction.status}</span>
-                    <span className="w-1/5 text-center">${transaction.lateFee}</span>
-                    <span className="w-1/5 text-center">${transaction.lateFee}</span>
+                    <span className="w-1/5">{transaction.users.name}</span>
+                    <span className="w-1/5 text-center">{transaction.books.title}</span>
+                    <span className="w-1/5 text-center capitalize">{transaction.action}</span>
+                    <span className="w-1/5 text-center">${transaction.fine_amount}</span>
                   </motion.div>
                 )) : <p className="text-gray-400">No transactions found</p>}
                 {transactions.length > 0 && (
