@@ -13,6 +13,7 @@ import IssuedBooks from "../pages/IssuedBooks";
 import Enquiry from "../pages/Enquiry";
 import Reservations from "../pages/Reservations";
 import EnquiryReviews from "../pages/EnquiryReviews";
+import Dashboard from "../components/Dashboard";
 const AppRoutes = () => {
     return (
         <Routes basename="/" className="h-full">
@@ -32,6 +33,7 @@ const AppRoutes = () => {
             <Route path="/enquiry" element={<Enquiry />} />
             <Route path="/reservations" element={<Reservations />} />
             <Route path="/enquiry-reviews" element={<EnquiryReviews />} /> 
+            <Route path="/dashboard" element={<Dashboard />} /> 
             {/* <Route path="/book-request" element={<BookRequestModal />} /> */}
             {/* 404 Page */}
             <Route path="*" element={<h1>404 - Page Not Found</h1>} />
