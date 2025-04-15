@@ -147,7 +147,10 @@ const Navbar = () => {
             { path: "/", label: "Home" },
             { path: isAdmin ? "/dashboard" : "/books",
               label: isAdmin ? "Dashboard" : "Books"
-             },
+            },
+            {
+              path:"/quiz", label: "Quiz"
+            },
             {
               path: isAdmin ? "/enquiry-reviews" : "/Enquiry",
               label: isAdmin ? "EnquiryReviews" : "Enquiry",
