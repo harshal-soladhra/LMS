@@ -28,7 +28,8 @@ const Reservations = () => {
       const { data, error } = await supabase
         .from("reservations")
         .select("*, books(title, author, genre)")
-        .eq("reserved_to", user.id);
+        .eq("reserved_to", user.id)
+        .eq("status", "pending");
       if (error) {
         console.error("🔥 Error fetching reservations:", error.message);
       } else {
@@ -50,11 +51,12 @@ const Reservations = () => {
   // ✅ Handle Cancel Reservation
   const handleCancelReservation = async (reservationId) => {
     if (!window.confirm("Are you sure you want to cancel this reservation?")) return;
+    console.log("Canceling reservation:", reservationId);
 
     try {
       const { error } = await supabase
         .from("reservations")
-        .update({ status: "Canceled", canceled_at: new Date().toISOString() })
+        .update({ status: "cancelled"})
         .eq("id", reservationId);
 
       if (error) throw error;
