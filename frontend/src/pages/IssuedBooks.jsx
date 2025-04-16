@@ -21,7 +21,7 @@ const IssuedBooks = () => {
         .from('issued_books')
         .select('*, books(title, author,edition)')
         .eq('returned', false) // optional: filter by status
-      // .eq('user_id', user.id); // optional: get only user's books
+        .eq('reserved', false); // optional: get only user's books
 
       if (error) {
         console.error("Error fetching issued books:", error.message);
@@ -68,6 +68,7 @@ const IssuedBooks = () => {
       .from('issued_books').update({ reserved: true }).eq('id', book.id);
     setSuccessPopup(true);
     setTimeout(() => setSuccessPopup(false), 2000); // Auto-close after 2 seconds
+    fetchIssuedBooks();
   };
 
   useEffect(() => {

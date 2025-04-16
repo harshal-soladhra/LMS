@@ -141,7 +141,7 @@ function Profile() {
             .from("issued_books")
             .select("*,books(*)")
             .eq("book_id", bookId)
-            .update({ returned: true })
+            // .update({ returned: true })
         // .single();
 
         if (fetchError) {
