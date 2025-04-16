@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../supabaseClient";
 
 // ✅ Modal imports
-import BookRequestModal from "../components/modals/BookRequestModal";
+// import BookRequestModal from "../components/modals/BookRequestModal";
 import EditProfileModal from "../components/modals/EditProfileModal";
 import BooksPopupModal from "../components/modals/BooksPopupModal";
 import LateFeesModal from "../components/modals/LateFeesModal";
@@ -63,12 +63,17 @@ function Profile() {
                     .select("*, books(*)")
                     .eq("user_id", userId)
                     .is("return_date", null);
+                const { data: requestedBooks } = await supabase
+                    .from("book_requests")
+                    .select("*, books(*)")
+                    .eq("user_id", userId);
 
                 setBooksData(prev => ({
                     ...prev,
                     issuedbooks: issuedBooks || [],
                     returnedbooks: returnedBooks || [],
                     returndue: returnDueBooks || [],
+                    requestedbooks: requestedBooks || [],
                 }));
             };
 
@@ -129,13 +134,14 @@ function Profile() {
         alert("Profile picture updated successfully!");
     };
 
-    const handleReturnBook = async (bookId) => {/* unchanged logic */
+    const handleReturnBook = async (bookId) => {
         // Fetch the book to get current copies
         console.log("Book ID:", bookId);
         const { data: book, error: fetchError } = await supabase
             .from("issued_books")
             .select("*,books(*)")
             .eq("book_id", bookId)
+            .update({ returned: true })
         // .single();
 
         if (fetchError) {
@@ -156,15 +162,14 @@ function Profile() {
             return;
         }
 
-
         const { error: transactionsError } = await supabase.from("transactions").insert([
             {
                 user_id: book[0].user_id,
                 book_id: book[0].book_id,
-                action: "book return",
+                action: "book return request sent for approval",
                 fine_amount: book[0].lateFees || 0,
                 action_date: new Date().toISOString(),
-                notes: "Returned with late fees"
+                notes: book[0].lateFees > 0 ? "returned with late fee" : "Returned"
             }
         ]);
         console.log("Transaction data:", book[0].user_id, book[0].book_id, book[0].lateFees || 0);
@@ -221,6 +226,12 @@ function Profile() {
             return total + lateFees;
         }, 0);
     };
+    const handleRequestedBook = async (bookId) => {/* unchanged logic */
+        const { error } = await supabase
+            .from("book_requests")
+            .select("*")
+            .eq("user_id", user.id)
+    }
 
     const totalReturnedFees = calculateTotalFees("returnedbooks");
     const totalDueFees = calculateTotalFees("returndue");
@@ -298,6 +309,7 @@ function Profile() {
                                 if (label === "Late Fees" && totalLateFees > 0) setLateFeesPopup(true);
                                 if (label === "Transactions") openPopup("transactions");
                                 if (label === "Requested Books") openPopup("requestedbooks");
+                                if (label === "Reserved Books") openPopup("reservedbooks");
                             }}
                             disabled={label === "Late Fees" && totalLateFees === 0}
                         >
@@ -333,7 +345,12 @@ function Profile() {
             {/* ✅ Requested Books */}
             <AnimatePresence>
                 {popup === "requestedbooks" && (
-                    <BookRequestModal setShowModal={() => setPopup(null)} />
+                    <BooksPopupModal
+                        popup={popup}
+                        booksData={booksData.requestedbooks}
+                        closePopup={() => setPopup(null)}
+                        handleReturnBook={handleRequestedBook}
+                    />
                 )}
             </AnimatePresence>
 

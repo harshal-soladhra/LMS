@@ -50,8 +50,9 @@ const Books = () => {
     const fetchAPIbooks = async () => {
       setLoadingMore(true);
       try {
-        const response = await fetch(`https://openlibrary.org/search.json?q=programming&limit=10&page=${page}&fields=key,title,author_name,language,edition_count,cover_i,first_publish_year,number_of_pages_median,subject`);
+        const response = await fetch(`https://openlibrary.org/search.json?q=programming&limit=10&page=${page}&fields=key,isbn,title,author_name,language,edition_count,cover_i,first_publish_year,number_of_pages_median,subject`);
         const data = await response.json();
+        console.log(`Check  API Books fetched successfully:`, data.docs);
 
         if (data.docs.length === 0) {
           setLoadingMore(false);
@@ -62,7 +63,7 @@ const Books = () => {
           id: `${book.key}-${index}`,
           title: book.title,
           author: book.author_name?.join(", ") || "Unknown",
-          genre: "Unknown",
+          genre: book.subject[0] || "Unknown",
           language: book.language?.[0] || "Unknown",
           edition: book.edition_count || "Unknown",
           coverImage: book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-M.jpg` : null,
@@ -71,12 +72,14 @@ const Books = () => {
           firstPublishYear: book.first_publish_year || "Unknown",
           numberOfPages: book.number_of_pages_median || "Unknown",
           subjects: book.subject?.slice(0, 3).join(", ") || "Unknown",
+          isbn: book.isbn?.[0] || "Unknown",
         }));
 
         setApiBooks((prevBooks) => [...prevBooks, ...formattedBooks]);
       } catch (error) {
         console.error("🔥 Error fetching API books:", error);
       } finally {
+        console.log("📚 API Books fetched successfully:", apiBooks);
         setLoadingMore(false);
       }
     };
@@ -149,6 +152,42 @@ const Books = () => {
       alert("Failed to issue book.");
     }
   };
+  const handleRequestBook = async (book) => {
+    console.log("Requesting book:", book);
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      console.error("🔥 Error fetching user:", userError?.message || "No user found");
+      alert("You must be logged in to request a book.");
+      navigate("/SignIn");
+      return;
+    }
+    else
+    {
+      await supabase.from("notifications").insert([
+        {
+          user_id: user.id,
+          message: `Your book request sent the Sucessfully!`,
+        },
+      ]);
+    }
+
+    try {
+      const { error } = await supabase.from("book_requests").insert([
+        {
+          user_id: user.id,
+          title: book.title,
+          author: book.author,
+          isbn: book.isbn,
+        },
+      ]);
+
+      if (error) throw error;
+      alert("Book requested successfully!");
+    } catch (error) {
+      console.error("🔥 Error requesting book:", error.message);
+      alert("Failed to request book.");
+    }
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -182,12 +221,18 @@ const Books = () => {
               <option value="Fiction">Fiction</option>
               <option value="Mystery">Mystery</option>
               <option value="Science">Science</option>
+              <option value="Technology">Technology</option>
+              <option value="Computers">Computers</option>
+              <option value="Programming">Programming</option>
+
+              
             </select>
             <select value={languageFilter} onChange={(e) => setLanguageFilter(e.target.value)} className="border p-2 rounded-md">
               <option value="">All Languages</option>
-              <option value="English">English</option>
-              <option value="Spanish">Spanish</option>
-              <option value="French">French</option>
+              <option value="Hindi">Hindi</option>
+              <option value="en">English</option>
+              <option value="spa">Spanish</option>
+              <option value="swe">Swedish</option>
             </select>
             <select value={editionFilter} onChange={(e) => setEditionFilter(e.target.value)} className="border p-2 rounded-md">
               <option value="">All Editions</option>
@@ -220,7 +265,9 @@ const Books = () => {
                     <p className="text-sm text-gray-600">Copies Available: {book.copies}</p>
                     <div className="flex gap-10">
                       {book.isExternal ? (
-                        <button className="mt-2 px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600">
+                        <button 
+                        onClick={() => handleRequestBook(book)}
+                        className="mt-2 px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600">
                           Request Book
                         </button>
                       ) : (
