@@ -59,16 +59,16 @@ const Main = () => {
     const fetchTopBooks2025 = async () => {
       // Replace with real API call, e.g., Google Books API
       const dummyData2025 = [
-        { id: 1, title: "Future Worlds", author: "A. Smith", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL1W" },
-        { id: 2, title: "Intermezzo", author: "Sally Rooney", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL2W" },
-        { id: 3, title: "Quantum Leap", author: "C. Lee", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL3W" },
-        { id: 4, title: "AI Revolution", author: "D. Kim", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL4W" },
-        { id: 5, title: "Space Chronicles", author: "E. Brown", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL5W" },
-        { id: 6, title: "Digital Dreams", author: "F. Davis", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL6W" },
-        { id: 7, title: "Eco Futures", author: "G. Wilson", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL7W" },
-        { id: 8, title: "Code & Conquer", author: "H. Taylor", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL8W" },
-        { id: 9, title: "Beyond Stars", author: "I. Clark", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL9W" },
-        { id: 10, title: "Next Horizon", author: "J. Moore", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL10W" },
+        { id: 1, title: "Future Worlds", author: "A. Smith", image: "src/assets/2025-img/1-img.jpg", link: "https://openlibrary.org/works/OL1W" },
+        { id: 2, title: "Atomic Habits", author: "James Clear", image: "src/assets/2025-img/2-img.jpg", link: "https://openlibrary.org/works/OL2W" },
+        { id: 3, title: "Quantum Leap", author: "C. Lee", image: "src/assets/2025-img/3-img.jpg", link: "https://openlibrary.org/works/OL3W" },
+        { id: 4, title: "AI Revolution", author: "D. Kim", image: "src/assets/2025-img/4-img.jpg", link: "https://openlibrary.org/works/OL4W" },
+        { id: 5, title: "Space Chronicles", author: "E. Brown", image: "src/assets/2025-img/5-img.jpg", link: "https://openlibrary.org/works/OL5W" },
+        { id: 6, title: "Digital Dreams", author: "F. Davis", image: "src/assets/2025-img/6-img.jpg", link: "https://openlibrary.org/works/OL6W" },
+        { id: 7, title: "Ikigai", author: "Hector Garcer", image: "src/assets/2025-img/7-img.jpg", link: "https://openlibrary.org/works/OL7W" },
+        { id: 8, title: "Lolita", author: "H. Taylor", image: "src/assets/2025-img/8-img.jpg", link: "https://openlibrary.org/works/OL8W" },
+        { id: 9, title: "Beyond Stars", author: "I. Clark", image: "src/assets/2025-img/9-img.jpg", link: "https://openlibrary.org/works/OL9W" },
+        { id: 10, title: "Next Horizon", author: "J. Moore", image: "src/assets/2025-img/10-img.jpg", link: "https://openlibrary.org/works/OL10W" },
       ];
       setTopBooks2025(dummyData2025);
     };
@@ -76,16 +76,16 @@ const Main = () => {
     const fetchTopBooks2024 = async () => {
       // Replace with real API call
       const dummyData2024 = [
-        { id: 1, title: "Past Promises", author: "K. Adams", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL11W" },
-        { id: 2, title: "Code Legacy", author: "L. Evans", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL12W" },
-        { id: 3, title: "Time Shift", author: "M. Garcia", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL13W" },
-        { id: 4, title: "Data Dawn", author: "N. Patel", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL14W" },
-        { id: 5, title: "Sky Limits", author: "O. White", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL15W" },
-        { id: 6, title: "Cyber Echoes", author: "P. Green", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL16W" },
-        { id: 7, title: "Green Tech", author: "Q. Harris", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL17W" },
-        { id: 8, title: "Web Wonders", author: "R. King", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL18W" },
-        { id: 9, title: "Star Paths", author: "S. Lopez", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL19W" },
-        { id: 10, title: "Last Frontier", author: "T. Young", image: "https://via.placeholder.com/150", link: "https://openlibrary.org/works/OL20W" },
+        { id: 1, title: "Past Promises", author: "K. Adams", image: "src/assets/2024-img/1-img.jpg", link: "https://openlibrary.org/works/OL11W" },
+        { id: 2, title: "Code Legacy", author: "L. Evans", image: "src/assets/2024-img/2-img.jpg", link: "https://openlibrary.org/works/OL12W" },
+        { id: 3, title: "Time Shift", author: "M. Garcia", image: "src/assets/2024-img/3-img.jpg", link: "https://openlibrary.org/works/OL13W" },
+        { id: 4, title: "Data Dawn", author: "N. Patel", image: "src/assets/2024-img/4-img.jpg", link: "https://openlibrary.org/works/OL14W" },
+        { id: 5, title: "Sky Limits", author: "O. White", image: "src/assets/2024-img/5-img.jpg", link: "https://openlibrary.org/works/OL15W" },
+        { id: 6, title: "Cyber Echoes", author: "P. Green", image: "src/assets/2024-img/6-img.jpg", link: "https://openlibrary.org/works/OL16W" },
+        { id: 7, title: "Green Tech", author: "Q. Harris", image: "src/assets/2024-img/7-img.jpg", link: "https://openlibrary.org/works/OL17W" },
+        { id: 8, title: "Web Wonders", author: "R. King", image: "src/assets/2024-img/8-img.jpg", link: "https://openlibrary.org/works/OL18W" },
+        { id: 9, title: "Star Paths", author: "S. Lopez", image: "src/assets/2024-img/9-img.jpg", link: "https://openlibrary.org/works/OL19W" },
+        { id: 10, title: "Last Frontier", author: "T. Young", image: "src/assets/2024-img/10-img.jpg", link: "https://openlibrary.org/works/OL20W" },
       ];
       setTopBooks2024(dummyData2024);
     };
