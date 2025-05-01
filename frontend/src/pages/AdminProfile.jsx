@@ -248,6 +248,7 @@ const AdminProfile = () => {
   const fetchBooks = async () => {
     const { data, error } = await supabase.from("books").select("*");
     if (!error) setBooks(data);
+    
   };
 
   const handleEditBook = (book) => {
@@ -301,7 +302,53 @@ const AdminProfile = () => {
     }
     fetchBooks();
   };
-
+  const handleApproveReturnRequest = async (request) => {
+    const today = new Date().toISOString();
+  
+    // Calculate late fees (optional logic)
+    const dueDate = new Date(request.due_date);
+    const now = new Date();
+    const lateDays = now > dueDate ? Math.floor((now - dueDate) / (1000 * 60 * 60 * 24)) : 0;
+    const lateFees = lateDays * 5;
+  
+    try {
+      // 1. Update issued_books table
+      const { error: updateError } = await supabase
+        .from("issued_books")
+        .update({
+          returned: true,
+          return_date: today,
+          lateFees: lateFees,
+          return_request: "approved"
+        })
+        .eq("id", request.id);
+  
+      if (updateError) throw updateError;
+  
+      // 2. Increase book copies
+      const { error: bookError } = await supabase
+        .from("books")
+        .update({ copies: request.books.copies + 1 })
+        .eq("id", request.book_id);
+  
+      if (bookError) throw bookError;
+  
+      // 3. Add notification
+      await supabase.from("notifications").insert([
+        {
+          user_id: request.user_id,
+          message: `✅ Your return request for "${request.books.title}" has been approved.`,
+        }
+      ]);
+  
+      alert("Return request approved!");
+      window.location.reload(); // or refetch data
+    } catch (err) {
+      console.error("❌ Approve failed:", err.message);
+      alert("Failed to approve return request.");
+    }
+  };
+  
 
   const calculateTotalFee = () => {
     return transactions.reduce((total, transaction) => total + (transaction.lateFees || 0), 0);

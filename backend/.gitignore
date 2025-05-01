@@ -1,7 +1,0 @@
-# This file is used to specify which files and directories to ignore in Git.
-# Add files and directories to be ignored below this line.
-# You can also use comments to explain why certain files are ignored.
-# Ignore Python bytecode files
-.env
-node_modules
-__pycache__/
